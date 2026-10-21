@@ -4,37 +4,41 @@ import random
 import string
 import io
 import math
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime
-from threading import Thread
 
 import requests
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session
 from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dekontika_gizli_anahtar_123")
 
 DB_FILE = "bank_db.json"
-DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL") # Log kanalına yedek atmak için Webhook URL'si
-
-# --- E-POSTA AYARLARI (SMTP) ---
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
-SMTP_EMAIL = os.getenv("SMTP_EMAIL", "") # Gmail adresiniz
-SMTP_PASS = os.getenv("SMTP_PASS", "")   # Uygulama Şifresi
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 # --- VERİTABANI YÖNETİMİ ---
 def load_db():
     if not os.path.exists(DB_FILE):
         return {
-            "users": {},
+            "users": {
+                "admin": {
+                    "ad_soyad": "Sistem Yöneticisi",
+                    "password": "123",
+                    "bakiye": 0.0,
+                    "iban": "TR000000000000000000000000",
+                    "kart_no": "4444 0000 0000 0000",
+                    "skt": "12/99",
+                    "cvv": "000",
+                    "kredi_borcu": 0.0,
+                    "kredi_notu": 2000,
+                    "durum": "aktif",
+                    "is_admin": True
+                }
+            },
             "kasa": 0.0,
             "bekleyen_talepler": {},
             "ayarlar": {
@@ -47,14 +51,29 @@ def load_db():
             }
         }
     with open(DB_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        db = json.load(f)
+        # Admin hesabı yoksa ekle
+        if "admin" not in db["users"]:
+            db["users"]["admin"] = {
+                "ad_soyad": "Sistem Yöneticisi",
+                "password": "123",
+                "bakiye": 0.0,
+                "iban": "TR000000000000000000000000",
+                "kart_no": "4444 0000 0000 0000",
+                "skt": "12/99",
+                "cvv": "000",
+                "kredi_borcu": 0.0,
+                "kredi_notu": 2000,
+                "durum": "aktif",
+                "is_admin": True
+            }
+        return db
 
 def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 def auto_backup_discord():
-    """Discord Log Kanalına Otomatik JSON Yedek Gönderir"""
     if not DISCORD_WEBHOOK_URL:
         return
     try:
@@ -64,26 +83,6 @@ def auto_backup_discord():
             requests.post(DISCORD_WEBHOOK_URL, data=payload, files=files)
     except Exception as e:
         print(f"Backup hatasi: {e}")
-
-def send_email(to_email, subject, body):
-    if not SMTP_EMAIL or not SMTP_PASS:
-        print(f"[E-POSTA SIMULASYONU] Alıcı: {to_email} | İçerik: {body}")
-        return True
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = SMTP_EMAIL
-        msg['To'] = to_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'html'))
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
-        server.login(SMTP_EMAIL, SMTP_PASS)
-        server.send_message(msg)
-        server.quit()
-        return True
-    except Exception as e:
-        print(f"E-Posta gönderme hatası: {e}")
-        return False
 
 # --- YARDIMCI FONKSİYONLAR ---
 def generate_iban():
@@ -113,7 +112,7 @@ def validate_positive_amount(val_str):
     except ValueError:
         return None
 
-# --- ZAMANLANMIŞ FAİZ/CEZA DÖNGÜSÜ (24 Saatte Bir) ---
+# --- ZAMANLANMIŞ FAİZ DÖNGÜSÜ ---
 def faiz_isle_job():
     db = load_db()
     for email, u_data in db["users"].items():
@@ -132,21 +131,34 @@ scheduler = BackgroundScheduler()
 scheduler.add_job(faiz_isle_job, 'interval', hours=24)
 scheduler.start()
 
-# --- WEB ENDPOINTLERİ ---
+# --- ENDPOINTLER ---
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/api/check-device', methods=['POST'])
-def check_device():
-    """Cihazda e-posta kayıtlı mı kontrol eder"""
+@app.route('/api/login', methods=['POST'])
+def login():
     data = request.json
-    saved_email = data.get("email")
+    email = data.get("email", "").strip().lower()
+    password = data.get("password")
+
+    # Sabit Admin Girişi Kontrolü (Admin / 123)
+    if email in ["admin", "admin@dekontika.com"] and password == "123":
+        session['user_email'] = "admin"
+        return jsonify({"status": "success", "email": "admin", "is_admin": True})
+
     db = load_db()
-    if saved_email and saved_email in db["users"]:
-        return jsonify({"remembered": True, "email": saved_email})
-    return jsonify({"remembered": False})
+    user = db["users"].get(email)
+
+    if not user or user["password"] != password:
+        return jsonify({"status": "error", "message": "E-posta veya şifre hatalı."}), 400
+
+    if user.get("durum") == "dondurulmus":
+        return jsonify({"status": "error", "message": "Hesabınız bloke edilmiştir."}), 403
+
+    session['user_email'] = email
+    return jsonify({"status": "success", "email": email, "is_admin": user.get("is_admin", False)})
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -162,31 +174,9 @@ def register():
     if email in db["users"]:
         return jsonify({"status": "error", "message": "Bu e-posta adresi zaten kayıtlı."}), 400
 
-    otp_code = str(random.randint(100000, 999999))
-    session['temp_user'] = {
-        "email": email,
-        "password": password,
-        "ad_soyad": ad_soyad,
-        "otp": otp_code
-    }
-
-    send_email(email, "Dekontika Banka Doğrulama Kodu", f"<h3>Doğrulama Kodunuz: <b>{otp_code}</b></h3>")
-    return jsonify({"status": "success", "message": "Doğrulama kodu e-postanıza gönderildi."})
-
-@app.route('/api/verify-otp', methods=['POST'])
-def verify_otp():
-    data = request.json
-    user_code = data.get("code")
-    temp_user = session.get('temp_user')
-
-    if not temp_user or temp_user["otp"] != user_code:
-        return jsonify({"status": "error", "message": "Geçersiz veya hatalı doğrulama kodu."}), 400
-
-    db = load_db()
-    email = temp_user["email"]
     db["users"][email] = {
-        "ad_soyad": temp_user["ad_soyad"],
-        "password": temp_user["password"],
+        "ad_soyad": ad_soyad,
+        "password": password,
         "bakiye": 0.0,
         "iban": generate_iban(),
         "kart_no": generate_card_number(),
@@ -199,33 +189,10 @@ def verify_otp():
         "is_admin": False
     }
     save_db(db)
-    session.pop('temp_user', None)
     session['user_email'] = email
-
     auto_backup_discord()
-    return jsonify({"status": "success", "email": email, "is_admin": False})
 
-@app.route('/api/login', methods=['POST'])
-def login():
-    data = request.json
-    email = data.get("email", "").strip().lower()
-    password = data.get("password")
-
-    db = load_db()
-    user = db["users"].get(email)
-
-    if not user or user["password"] != password:
-        return jsonify({"status": "error", "message": "E-posta veya şifre hatalı."}), 400
-
-    if user.get("durum") == "dondurulmus":
-        return jsonify({"status": "error", "message": "Hesabınız bloke edilmiştir. Admin ile iletişime geçin."}), 403
-
-    session['user_email'] = email
-    return jsonify({
-        "status": "success", 
-        "email": email, 
-        "is_admin": user.get("is_admin", False)
-    })
+    return jsonify({"status": "success", "message": "Hesap başarıyla oluşturuldu!", "email": email, "is_admin": False})
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
@@ -243,16 +210,10 @@ def get_user_data():
     if not user:
         return jsonify({"status": "error"}), 404
 
-    # Kullanıcı taleplerini filtrele
-    talepler = {k: v for k, v in db["bekleyen_talepler"].items() if v.get("user_id") == email}
-
     return jsonify({
         "status": "success",
         "user": user,
-        "email": email,
-        "talepler": talepler,
-        "kasa": db.get("kasa", 0) if user.get("is_admin") else None,
-        "ayarlar": db.get("ayarlar") if user.get("is_admin") else None
+        "email": email
     })
 
 @app.route('/api/admin/users', methods=['GET'])
@@ -265,11 +226,33 @@ def get_admin_users():
     return jsonify({
         "status": "success",
         "users": db["users"],
-        "bekleyen_talepler": db["bekleyen_talepler"],
+        "bekleyen_talepler": db.get("bekleyen_talepler", {}),
         "kasa": db.get("kasa", 0)
     })
 
-# --- İŞLEM ENDPOINTLERİ ---
+# --- JSON YEDEK YÜKLEME (RESTORE) ---
+@app.route('/api/admin/restore-db', methods=['POST'])
+def restore_db():
+    email = session.get('user_email')
+    db = load_db()
+    if not email or not db["users"].get(email, {}).get("is_admin"):
+        return jsonify({"status": "unauthorized"}), 403
+
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "Dosya seçilmedi."}), 400
+
+    file = request.files['file']
+    try:
+        new_db = json.load(file)
+        # Admin hesabının silinmediğinden emin ol
+        if "users" in new_db and "admin" not in new_db["users"]:
+            new_db["users"]["admin"] = db["users"]["admin"]
+        
+        save_db(new_db)
+        auto_backup_discord()
+        return jsonify({"status": "success", "message": "Veritabanı başarıyla yüklendi ve güncellendi!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Geçersiz JSON dosyası: {str(e)}"}), 400
 
 @app.route('/api/action/odeme', methods=['POST'])
 def action_odeme():
@@ -282,9 +265,6 @@ def action_odeme():
     db = load_db()
     hesap = db["users"].get(email)
     
-    if clean_card_number(data.get("kart_no", "")) != hesap["kart_no"] or data.get("cvv") != hesap["cvv"]:
-        return jsonify({"status": "error", "message": "Kart bilgileri hatalı."}), 400
-
     komisyon = round(fiyat_val * db["ayarlar"]["komisyon_odeme"], 2)
     toplam = round(fiyat_val + komisyon, 2)
 
@@ -378,16 +358,14 @@ def action_kredi_ode():
     auto_backup_discord()
     return jsonify({"status": "success", "message": "Kredi borcu ödemesi alındı."})
 
-# --- ADMIN İŞLEMLERİ ---
-
 @app.route('/api/admin/approve-request', methods=['POST'])
 def admin_approve():
     email = session.get('user_email')
     db = load_db()
-    if not db["users"].get(email, {}).get("is_admin"): return jsonify({"status": "unauthorized"}), 403
+    if not email or not db["users"].get(email, {}).get("is_admin"): return jsonify({"status": "unauthorized"}), 403
 
     req_id = request.json.get("req_id")
-    action = request.json.get("action") # 'onay' veya 'red'
+    action = request.json.get("action")
 
     if req_id not in db["bekleyen_talepler"]:
         return jsonify({"status": "error", "message": "Talep bulunamadı."}), 400
