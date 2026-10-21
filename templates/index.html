@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEKONTİKA | Merkez Bankası</title>
+    <style>
+        :root {
+            --bg-color: #0f0f1a;
+            --card-bg: #1e1e2f;
+            --accent-color: #6c5ce7;
+            --text-color: #ffffff;
+            --text-muted: #a0a0b0;
+            --success-color: #00b894;
+            --danger-color: #ff7675;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; min-height: 100vh; padding: 20px; }
+        .app-container { width: 100%; max-width: 480px; }
+        
+        .card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+        .bank-card { background: linear-gradient(135deg, #4834d4, #6c5ce7); color: white; border-radius: 16px; padding: 20px; position: relative; overflow: hidden; margin-bottom: 20px; }
+        .bank-card .chip { width: 45px; height: 30px; background: #f9ca24; border-radius: 6px; margin-bottom: 20px; }
+        .bank-card .card-num { font-size: 1.2rem; letter-spacing: 2px; margin-bottom: 15px; }
+        
+        h2, h3 { margin-bottom: 15px; }
+        input, select, button { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #151525; color: white; margin-bottom: 12px; font-size: 1rem; }
+        button { background: var(--accent-color); border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { opacity: 0.9; }
+        
+        .grid-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-menu button { background: #2a2a40; border: 1px solid #3d3d5c; font-size: 0.9rem; margin: 0; }
+        
+        .hidden { display: none; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .badge-success { background: var(--success-color); }
+        .badge-danger { background: var(--danger-color); }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- HESAP GİRİŞ & KAYIT KRANI -->
+    <div id="auth-box" class="card">
+        <h2>🏦 DEKONTİKA Banka</h2>
+        
+        <div id="login-form">
+            <input type="email" id="login-email" placeholder="E-Posta Adresi">
+            <input type="password" id="login-pass" placeholder="Parola">
+            <button onclick="login()">Giriş Yap</button>
+            <p style="text-align:center; font-size:0.9rem; color:var(--text-muted); cursor:pointer;" onclick="toggleAuth('register')">Hesabın yok mu? Kayıt Ol</p>
+        </div>
+
+        <div id="register-form" class="hidden">
+            <input type="text" id="reg-name" placeholder="Ad Soyad">
+            <input type="email" id="reg-email" placeholder="E-Posta Adresi">
+            <input type="password" id="reg-pass" placeholder="Şifre Oluştur">
+            <button onclick="register()">E-Posta Doğrulama Kodu Gönder</button>
+            <p style="text-align:center; font-size:0.9rem; color:var(--text-muted); cursor:pointer;" onclick="toggleAuth('login')">Zaten hesabın var mı? Giriş Yap</p>
+        </div>
+
+        <div id="otp-form" class="hidden">
+            <p style="margin-bottom:10px;">E-postanıza gelen 6 haneli doğrulama kodunu girin:</p>
+            <input type="text" id="otp-code" placeholder="123456">
+            <button onclick="verifyOTP()">Doğrula ve Kaydı Tamamla</button>
+        </div>
+    </div>
+
+    <!-- MÜŞTERİ PANELİ -->
+    <div id="user-panel" class="hidden">
+        <div class="bank-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:bold;">MERKEZ BANKASI</span>
+                <span id="card-status" class="badge badge-success">Aktif</span>
+            </div>
+            <div class="chip" style="margin-top:15px;"></div>
+            <div id="display-card-num" class="card-num">4444 **** **** ****</div>
+            <div style="display:flex; justify-content:space-between; font-size:0.8rem;">
+                <span id="display-name">AD SOYAD</span>
+                <span id="display-skt">SKT: 12/28</span>
+                <span id="display-cvv">CVV: ***</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <p style="color:var(--text-muted);">Toplam Bakiye</p>
+            <h1 id="user-balance" style="color:var(--success-color); margin-bottom:10px;">0.00 ₺</h1>
+            <p style="font-size:0.85rem; color:var(--text-muted);">IBAN: <b id="user-iban" style="color:white;">TR000...</b></p>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-top:5px;">Kredi Borcu: <b id="user-debt" style="color:var(--danger-color);">0.00 ₺</b> | Kredi Notu: <b id="user-score">1000</b></p>
+        </div>
+
+        <!-- HIZLI İŞLEMLER -->
+        <div class="card grid-menu">
+            <button onclick="showForm('odeme')">🛍️ Ödeme Yap</button>
+            <button onclick="showForm('havale')">🔄 Havale Yap</button>
+            <button onclick="showForm('kredi')">📑 Kredi Çek</button>
+            <button onclick="showForm('kredi-ode')">💸 Kredi Öde</button>
+        </div>
+
+        <!-- İŞLEM FORMLARI -->
+        <div id="action-box" class="card hidden">
+            <h3 id="form-title">İşlem Yap</h3>
+            <div id="form-inputs"></div>
+            <button id="form-submit-btn">Gönder</button>
+            <button onclick="hideForm()" style="background:#444; margin-top:5px;">İptal</button>
+        </div>
+
+        <button onclick="logout()" style="background:#333; margin-top:10px;">Çıkış Yap</button>
+    </div>
+
+    <!-- YÖNETİCİ (ADMIN) PANELİ -->
+    <div id="admin-panel" class="hidden">
+        <div class="card" style="border: 1px solid var(--accent-color);">
+            <h2>👑 Admin Kontrol Paneli</h2>
+            <p>Banka Kasası: <b id="admin-kasa" style="color:var(--success-color);">0.00 ₺</b></p>
+        </div>
+
+        <div class="card">
+            <h3>📊 Kasası Dağılım Grafiği</h3>
+            <img src="/api/admin/grafik" style="width:100%; border-radius:8px;" alt="Kasa Grafik">
+        </div>
+
+        <div class="card">
+            <h3>⏳ Onay Bekleyen Talepler</h3>
+            <div id="admin-requests">Talepler yükleniyor...</div>
+        </div>
+
+        <div class="card">
+            <h3>👥 TÜM HESAPLAR</h3>
+            <div id="admin-users-list">Yükleniyor...</div>
+        </div>
+        
+        <button onclick="logout()" style="background:#333;">Admin Çıkışı</button>
+    </div>
+</div>
+
+<script>
+    let currentUser = null;
+
+    window.onload = async () => {
+        const savedEmail = localStorage.getItem("dekontika_email");
+        if (savedEmail) {
+            document.getElementById("login-email").value = savedEmail;
+        }
+        checkSession();
+    };
+
+    function toggleAuth(type) {
+        document.getElementById("login-form").classList.toggle("hidden", type !== 'login');
+        document.getElementById("register-form").classList.toggle("hidden", type !== 'register');
+        document.getElementById("otp-form").classList.add("hidden");
+    }
+
+    async function register() {
+        const name = document.getElementById("reg-name").value;
+        const email = document.getElementById("reg-email").value;
+        const pass = document.getElementById("reg-pass").value;
+
+        const res = await fetch('/api/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ad_soyad: name, email: email, password: pass})
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) {
+            document.getElementById("register-form").classList.add("hidden");
+            document.getElementById("otp-form").classList.remove("hidden");
+        }
+    }
+
+    async function verifyOTP() {
+        const code = document.getElementById("otp-code").value;
+        const res = await fetch('/api/verify-otp', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({code: code})
+        });
+        const data = await res.json();
+        if (res.ok) {
+            localStorage.setItem("dekontika_email", data.email);
+            location.reload();
+        } else alert(data.message);
+    }
+
+    async function login() {
+        const email = document.getElementById("login-email").value;
+        const pass = document.getElementById("login-pass").value;
+
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email: email, password: pass})
+        });
+        const data = await res.json();
+        if (res.ok) {
+            localStorage.setItem("dekontika_email", email);
+            checkSession();
+        } else alert(data.message);
+    }
+
+    async function checkSession() {
+        const res = await fetch('/api/user-data');
+        if (res.ok) {
+            const data = await res.json();
+            currentUser = data.user;
+            document.getElementById("auth-box").classList.add("hidden");
+
+            if (currentUser.is_admin) {
+                document.getElementById("admin-panel").classList.remove("hidden");
+                loadAdminData();
+            } else {
+                document.getElementById("user-panel").classList.remove("hidden");
+                renderUserPanel(data);
+            }
+        }
+    }
+
+    function renderUserPanel(data) {
+        const u = data.user;
+        document.getElementById("display-name").innerText = u.ad_soyad.toUpperCase();
+        document.getElementById("display-card-num").innerText = u.kart_no;
+        document.getElementById("display-skt").innerText = "SKT: " + u.skt;
+        document.getElementById("display-cvv").innerText = "CVV: " + u.cvv;
+        document.getElementById("user-balance").innerText = u.bakiye.toLocaleString('tr-TR', {minimumFractionDigits:2}) + " ₺";
+        document.getElementById("user-iban").innerText = u.iban;
+        document.getElementById("user-debt").innerText = u.kredi_borcu.toLocaleString('tr-TR', {minimumFractionDigits:2}) + " ₺";
+        document.getElementById("user-score").innerText = u.kredi_notu;
+    }
+
+    function showForm(type) {
+        const box = document.getElementById("action-box");
+        const inputs = document.getElementById("form-inputs");
+        const submitBtn = document.getElementById("form-submit-btn");
+        box.classList.remove("hidden");
+
+        if (type === 'odeme') {
+            document.getElementById("form-title").innerText = "🛍️ Kredi Kartı ile Ödeme";
+            inputs.innerHTML = `
+                <input type="number" id="act-fiyat" placeholder="Ürün Fiyatı (TL)">
+                <input type="text" id="act-kart" placeholder="Kart Numarası" value="${currentUser.kart_no}">
+                <input type="text" id="act-cvv" placeholder="CVV" value="${currentUser.cvv}">
+                <input type="text" id="act-desc" placeholder="Ürün Adı / Açıklama">
+            `;
+            submitBtn.onclick = () => submitAction('/api/action/odeme', {
+                fiyat: document.getElementById("act-fiyat").value,
+                kart_no: document.getElementById("act-kart").value,
+                cvv: document.getElementById("act-cvv").value,
+                aciklama: document.getElementById("act-desc").value
+            });
+        } else if (type === 'havale') {
+            document.getElementById("form-title").innerText = "🔄 Para Transferi (Havale)";
+            inputs.innerHTML = `
+                <input type="text" id="act-iban" placeholder="Alıcı IBAN (TR...)">
+                <input type="number" id="act-tutar" placeholder="Tutar (TL)">
+            `;
+            submitBtn.onclick = () => submitAction('/api/action/havale', {
+                iban: document.getElementById("act-iban").value,
+                tutar: document.getElementById("act-tutar").value
+            });
+        } else if (type === 'kredi') {
+            document.getElementById("form-title").innerText = "📑 Kredi Başvurusu";
+            inputs.innerHTML = `<input type="number" id="act-tutar" placeholder="Çekilecek Tutar (TL)">`;
+            submitBtn.onclick = () => submitAction('/api/action/kredi-cek', {tutar: document.getElementById("act-tutar").value});
+        } else if (type === 'kredi-ode') {
+            document.getElementById("form-title").innerText = "💸 Kredi Borcu Öde";
+            inputs.innerHTML = `<input type="number" id="act-tutar" placeholder="Ödenecek Tutar (TL)">`;
+            submitBtn.onclick = () => submitAction('/api/action/kredi-ode', {tutar: document.getElementById("act-tutar").value});
+        }
+    }
+
+    async function submitAction(url, payload) {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) location.reload();
+    }
+
+    function hideForm() { document.getElementById("action-box").classList.add("hidden"); }
+
+    async function loadAdminData() {
+        const res = await fetch('/api/admin/users');
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById("admin-kasa").innerText = data.kasa.toLocaleString('tr-TR', {minimumFractionDigits:2}) + " ₺";
+
+            let reqHtml = "";
+            for (let id in data.bekleyen_talepler) {
+                let t = data.bekleyen_talepler[id];
+                reqHtml += `<div style="background:#151525; padding:10px; margin-bottom:5px; border-radius:6px;">
+                    <b>${t.tur.toUpperCase()}</b> - ${t.user_id} - ${t.tutar || t.toplam} TL 
+                    <button onclick="approveReq('${id}', 'onay')" style="width:auto; padding:5px 10px; background:var(--success-color);">Onayla</button>
+                    <button onclick="approveReq('${id}', 'red')" style="width:auto; padding:5px 10px; background:var(--danger-color);">Reddet</button>
+                </div>`;
+            }
+            document.getElementById("admin-requests").innerHTML = reqHtml || "Bekleyen talep yok.";
+
+            let userHtml = "";
+            for (let email in data.users) {
+                let u = data.users[email];
+                userHtml += `<div style="background:#151525; padding:10px; margin-bottom:5px; border-radius:6px; font-size:0.85rem;">
+                    <b>${u.ad_soyad}</b> (${email})<br>
+                    Bakiye: ${u.bakiye} TL | IBAN: ${u.iban}
+                </div>`;
+            }
+            document.getElementById("admin-users-list").innerHTML = userHtml;
+        }
+    }
+
+    async function approveReq(id, act) {
+        await fetch('/api/admin/approve-request', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({req_id: id, action: act})
+        });
+        loadAdminData();
+    }
+
+    async function logout() {
+        await fetch('/api/logout', {method: 'POST'});
+        location.reload();
+    }
+</script>
+</body>
+</html>
