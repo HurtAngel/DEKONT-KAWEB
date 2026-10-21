@@ -13,6 +13,7 @@
             --text-muted: #a0a0b0;
             --success-color: #00b894;
             --danger-color: #ff7675;
+            --warning-color: #fdcb6e;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -25,7 +26,7 @@
         .bank-card .card-num { font-size: 1.2rem; letter-spacing: 2px; margin-bottom: 15px; }
         
         h2, h3 { margin-bottom: 15px; }
-        input, select, button { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #151525; color: white; margin-bottom: 12px; font-size: 1rem; }
+        input, button { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #151525; color: white; margin-bottom: 12px; font-size: 1rem; }
         button { background: var(--accent-color); border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
         button:hover { opacity: 0.9; }
         
@@ -33,20 +34,23 @@
         .grid-menu button { background: #2a2a40; border: 1px solid #3d3d5c; font-size: 0.9rem; margin: 0; }
         
         .hidden { display: none; }
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
         .badge-success { background: var(--success-color); }
         .badge-danger { background: var(--danger-color); }
+        .badge-warning { background: var(--warning-color); color: black; }
+
+        video, canvas { width: 100%; border-radius: 8px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="app-container">
-    <!-- HESAP GİRİŞ & KAYIT KRANI -->
+    <!-- GİRİŞ & KAYIT EKRANI -->
     <div id="auth-box" class="card">
         <h2>🏦 DEKONTİKA Banka</h2>
         
         <div id="login-form">
-            <input type="email" id="login-email" placeholder="E-Posta Adresi">
+            <input type="text" id="login-email" placeholder="E-Posta Adresi (Örn: isim@mail.com) veya 'Admin'">
             <input type="password" id="login-pass" placeholder="Parola">
             <button onclick="login()">Giriş Yap</button>
             <p style="text-align:center; font-size:0.9rem; color:var(--text-muted); cursor:pointer;" onclick="toggleAuth('register')">Hesabın yok mu? Kayıt Ol</p>
@@ -54,16 +58,10 @@
 
         <div id="register-form" class="hidden">
             <input type="text" id="reg-name" placeholder="Ad Soyad">
-            <input type="email" id="reg-email" placeholder="E-Posta Adresi">
+            <input type="email" id="reg-email" placeholder="Geçerli E-Posta Adresi (Zorunlu)">
             <input type="password" id="reg-pass" placeholder="Şifre Oluştur">
-            <button onclick="register()">E-Posta Doğrulama Kodu Gönder</button>
+            <button onclick="register()">Anında Kayıt Ol (Kodsuz)</button>
             <p style="text-align:center; font-size:0.9rem; color:var(--text-muted); cursor:pointer;" onclick="toggleAuth('login')">Zaten hesabın var mı? Giriş Yap</p>
-        </div>
-
-        <div id="otp-form" class="hidden">
-            <p style="margin-bottom:10px;">E-postanıza gelen 6 haneli doğrulama kodunu girin:</p>
-            <input type="text" id="otp-code" placeholder="123456">
-            <button onclick="verifyOTP()">Doğrula ve Kaydı Tamamla</button>
         </div>
     </div>
 
@@ -72,7 +70,7 @@
         <div class="bank-card">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-weight:bold;">MERKEZ BANKASI</span>
-                <span id="card-status" class="badge badge-success">Aktif</span>
+                <span id="card-status" class="badge">Durum</span>
             </div>
             <div class="chip" style="margin-top:15px;"></div>
             <div id="display-card-num" class="card-num">4444 **** **** ****</div>
@@ -83,6 +81,21 @@
             </div>
         </div>
 
+        <!-- DOĞRULAMA UYARISI / KAMERA KUTUSU -->
+        <div id="verify-warning-box" class="card" style="border:1px solid var(--warning-color);">
+            <h3 style="color:var(--warning-color);">⚠️ Kısıtlı Hesap</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">
+                Hesabınız henüz doğrulanmadı. Havale limitiniz max 500 TL'dir, kartla ödeme ve kredi kullanımı kapalıdır.
+            </p>
+            <button onclick="startCamera()" style="background:var(--warning-color); color:black;">📷 Yüz Doğrulama (360p Selfie Çek)</button>
+            
+            <div id="camera-section" class="hidden" style="margin-top:10px;">
+                <video id="webcam" autoplay playsinline></video>
+                <button onclick="takeSnapshot()" style="background:var(--success-color);">Çek ve Admin Onayına Gönder</button>
+                <canvas id="snapshot-canvas" class="hidden" width="640" height="360"></canvas>
+            </div>
+        </div>
+
         <div class="card">
             <p style="color:var(--text-muted);">Toplam Bakiye</p>
             <h1 id="user-balance" style="color:var(--success-color); margin-bottom:10px;">0.00 ₺</h1>
@@ -90,7 +103,6 @@
             <p style="font-size:0.85rem; color:var(--text-muted); margin-top:5px;">Kredi Borcu: <b id="user-debt" style="color:var(--danger-color);">0.00 ₺</b> | Kredi Notu: <b id="user-score">1000</b></p>
         </div>
 
-        <!-- HIZLI İŞLEMLER -->
         <div class="card grid-menu">
             <button onclick="showForm('odeme')">🛍️ Ödeme Yap</button>
             <button onclick="showForm('havale')">🔄 Havale Yap</button>
@@ -98,7 +110,6 @@
             <button onclick="showForm('kredi-ode')">💸 Kredi Öde</button>
         </div>
 
-        <!-- İŞLEM FORMLARI -->
         <div id="action-box" class="card hidden">
             <h3 id="form-title">İşlem Yap</h3>
             <div id="form-inputs"></div>
@@ -116,13 +127,24 @@
             <p>Banka Kasası: <b id="admin-kasa" style="color:var(--success-color);">0.00 ₺</b></p>
         </div>
 
+        <div class="card" style="border: 1px solid var(--warning-color);">
+            <h3>🤳 Yüz Doğrulama Talepleri (360p Selfie)</h3>
+            <div id="admin-verify-requests">Yükleniyor...</div>
+        </div>
+
+        <div class="card" style="border: 1px dashed var(--accent-color);">
+            <h3>📂 Veritabanı Yükle / Geri Yükle</h3>
+            <input type="file" id="json-file-input" accept=".json">
+            <button onclick="restoreDB()" style="background:var(--success-color);">Veritabanını Yükle</button>
+        </div>
+
         <div class="card">
-            <h3>📊 Kasası Dağılım Grafiği</h3>
+            <h3>📊 Kasa Dağılım Grafiği</h3>
             <img src="/api/admin/grafik" style="width:100%; border-radius:8px;" alt="Kasa Grafik">
         </div>
 
         <div class="card">
-            <h3>⏳ Onay Bekleyen Talepler</h3>
+            <h3>⏳ Onay Bekleyen İşlemler</h3>
             <div id="admin-requests">Talepler yükleniyor...</div>
         </div>
 
@@ -137,19 +159,17 @@
 
 <script>
     let currentUser = null;
+    let videoStream = null;
 
-    window.onload = async () => {
+    window.onload = () => {
         const savedEmail = localStorage.getItem("dekontika_email");
-        if (savedEmail) {
-            document.getElementById("login-email").value = savedEmail;
-        }
+        if (savedEmail) document.getElementById("login-email").value = savedEmail;
         checkSession();
     };
 
     function toggleAuth(type) {
         document.getElementById("login-form").classList.toggle("hidden", type !== 'login');
         document.getElementById("register-form").classList.toggle("hidden", type !== 'register');
-        document.getElementById("otp-form").classList.add("hidden");
     }
 
     async function register() {
@@ -165,23 +185,9 @@
         const data = await res.json();
         alert(data.message);
         if (res.ok) {
-            document.getElementById("register-form").classList.add("hidden");
-            document.getElementById("otp-form").classList.remove("hidden");
+            localStorage.setItem("dekontika_email", email);
+            checkSession();
         }
-    }
-
-    async function verifyOTP() {
-        const code = document.getElementById("otp-code").value;
-        const res = await fetch('/api/verify-otp', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({code: code})
-        });
-        const data = await res.json();
-        if (res.ok) {
-            localStorage.setItem("dekontika_email", data.email);
-            location.reload();
-        } else alert(data.message);
     }
 
     async function login() {
@@ -227,6 +233,49 @@
         document.getElementById("user-iban").innerText = u.iban;
         document.getElementById("user-debt").innerText = u.kredi_borcu.toLocaleString('tr-TR', {minimumFractionDigits:2}) + " ₺";
         document.getElementById("user-score").innerText = u.kredi_notu;
+
+        const statusBadge = document.getElementById("card-status");
+        const verifyBox = document.getElementById("verify-warning-box");
+
+        if (u.dogrulandi) {
+            statusBadge.innerText = "🟢 Doğrulanmış";
+            statusBadge.className = "badge badge-success";
+            verifyBox.classList.add("hidden");
+        } else {
+            statusBadge.innerText = "🟡 Kısıtlı Hesap";
+            statusBadge.className = "badge badge-warning";
+            verifyBox.classList.remove("hidden");
+        }
+    }
+
+    async function startCamera() {
+        document.getElementById("camera-section").classList.remove("hidden");
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 } });
+            document.getElementById("webcam").srcObject = videoStream;
+        } catch (err) {
+            alert("Kamera erişimi reddedildi veya bulunamadı!");
+        }
+    }
+
+    async function takeSnapshot() {
+        const video = document.getElementById("webcam");
+        const canvas = document.getElementById("snapshot-canvas");
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, 640, 360);
+        
+        const base64Img = canvas.toDataURL("image/jpeg", 0.7); // 360p kalitesinde base64
+
+        if (videoStream) videoStream.getTracks().forEach(track => track.stop());
+
+        const res = await fetch('/api/user/upload-selfie', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({image: base64Img})
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) location.reload();
     }
 
     function showForm(type) {
@@ -239,14 +288,10 @@
             document.getElementById("form-title").innerText = "🛍️ Kredi Kartı ile Ödeme";
             inputs.innerHTML = `
                 <input type="number" id="act-fiyat" placeholder="Ürün Fiyatı (TL)">
-                <input type="text" id="act-kart" placeholder="Kart Numarası" value="${currentUser.kart_no}">
-                <input type="text" id="act-cvv" placeholder="CVV" value="${currentUser.cvv}">
                 <input type="text" id="act-desc" placeholder="Ürün Adı / Açıklama">
             `;
             submitBtn.onclick = () => submitAction('/api/action/odeme', {
                 fiyat: document.getElementById("act-fiyat").value,
-                kart_no: document.getElementById("act-kart").value,
-                cvv: document.getElementById("act-cvv").value,
                 aciklama: document.getElementById("act-desc").value
             });
         } else if (type === 'havale') {
@@ -289,6 +334,20 @@
             const data = await res.json();
             document.getElementById("admin-kasa").innerText = data.kasa.toLocaleString('tr-TR', {minimumFractionDigits:2}) + " ₺";
 
+            // Yüz Doğrulama Talepleri
+            let verifyHtml = "";
+            for (let email in data.dogrulama_talepleri) {
+                let req = data.dogrulama_talepleri[email];
+                verifyHtml += `<div style="background:#151525; padding:10px; margin-bottom:10px; border-radius:6px;">
+                    <b>${req.ad_soyad}</b> (${email})<br>
+                    <img src="${req.selfie}" style="width:100%; max-width:250px; border-radius:6px; margin:5px 0;">
+                    <button onclick="verifyUser('${email}', 'onay')" style="background:var(--success-color);">Hesabı Doğrula</button>
+                    <button onclick="verifyUser('${email}', 'red')" style="background:var(--danger-color); margin-top:3px;">Reddet</button>
+                </div>`;
+            }
+            document.getElementById("admin-verify-requests").innerHTML = verifyHtml || "Bekleyen yüz doğrulaması yok.";
+
+            // Onay Bekleyen İşlemler
             let reqHtml = "";
             for (let id in data.bekleyen_talepler) {
                 let t = data.bekleyen_talepler[id];
@@ -300,16 +359,39 @@
             }
             document.getElementById("admin-requests").innerHTML = reqHtml || "Bekleyen talep yok.";
 
+            // Tüm Kullanıcılar
             let userHtml = "";
             for (let email in data.users) {
                 let u = data.users[email];
                 userHtml += `<div style="background:#151525; padding:10px; margin-bottom:5px; border-radius:6px; font-size:0.85rem;">
-                    <b>${u.ad_soyad}</b> (${email})<br>
+                    <b>${u.ad_soyad}</b> (${email}) <span style="color:${u.dogrulandi ? 'var(--success-color)':'var(--warning-color)'}">${u.dogrulandi ? '[DOĞRULANMIŞ]':'[KISITLI]'}</span><br>
                     Bakiye: ${u.bakiye} TL | IBAN: ${u.iban}
                 </div>`;
             }
             document.getElementById("admin-users-list").innerHTML = userHtml;
         }
+    }
+
+    async function verifyUser(email, act) {
+        await fetch('/api/admin/verify-user', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email: email, action: act})
+        });
+        loadAdminData();
+    }
+
+    async function restoreDB() {
+        const fileInput = document.getElementById("json-file-input");
+        if (!fileInput.files[0]) return alert("Lütfen yüklenecek JSON dosyasını seçin.");
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        const res = await fetch('/api/admin/restore-db', { method: 'POST', body: formData });
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) location.reload();
     }
 
     async function approveReq(id, act) {
