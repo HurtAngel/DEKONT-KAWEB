@@ -15,6 +15,7 @@
             --success-color: #00b894;
             --danger-color: #ff7675;
             --warning-color: #fdcb6e;
+            --business-color: #00cec9;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -31,7 +32,6 @@
         button { background: var(--accent-color); border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
         button:hover { opacity: 0.9; }
         
-        /* ÜST SEÇİM SEKMELERİ (BANKA vs MARKET) */
         .tab-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
         .tab-nav button { background: #2a2a40; border: 1px solid #3d3d5c; padding: 12px; margin: 0; }
         .tab-nav button.active { background: var(--accent-color); border-color: var(--accent-color); }
@@ -40,23 +40,21 @@
         .grid-menu button { background: #2a2a40; border: 1px solid #3d3d5c; font-size: 0.85rem; margin: 0; padding: 12px 5px; }
         
         .hidden { display: none; }
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; }
-        .badge-success { background: var(--success-color); color: white; }
-        .badge-danger { background: var(--danger-color); color: white; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .badge-success { background: var(--success-color); }
+        .badge-danger { background: var(--danger-color); }
         .badge-warning { background: var(--warning-color); color: black; }
-        .badge-biz { background: #00cec9; color: black; font-weight: bold; }
+        .badge-business { background: var(--business-color); color: black; }
 
         video, canvas { width: 100%; border-radius: 8px; margin-bottom: 8px; }
         .qr-box { text-align: center; background: white; padding: 15px; border-radius: 12px; margin: 10px 0; }
         .dekont-item { background: #151525; border-left: 4px solid var(--accent-color); padding: 10px; margin-bottom: 8px; border-radius: 6px; font-size: 0.85rem; }
         
-        /* E-PİN MARKET KARTLARI */
         .market-card { background: #151525; border: 1px solid #333; border-radius: 12px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .market-card-title { font-weight: bold; color: white; }
         .market-card-sub { font-size: 0.8rem; color: var(--text-muted); }
         .market-card button { width: auto; padding: 8px 12px; margin: 0; font-size: 0.85rem; background: var(--success-color); }
 
-        /* KREDİ KUTUCUKLARI */
         .kredi-card { background: #151525; border: 1px solid #333; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
         .kredi-card-title { display: flex; justify-content: space-between; font-weight: bold; color: var(--warning-color); margin-bottom: 8px; }
         .kredi-btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
@@ -86,23 +84,18 @@
         </div>
     </div>
 
-    <!-- MÜŞTERİ PANELİ (BANKA + E-PİN MARKETİ SEKMELERİ) -->
+    <!-- MÜŞTERİ PANELİ -->
     <div id="user-panel" class="hidden">
-        <!-- ANA SEKMELER -->
         <div class="tab-nav">
             <button id="tab-btn-banka" class="active" onclick="switchTab('banka')">🏦 Banka Hesabım</button>
             <button id="tab-btn-market" onclick="switchTab('market')">🛒 E-Pin Marketi</button>
         </div>
 
-        <!-- SEKMELİ İÇERİK 1: BANKA HESABIM -->
         <div id="tab-content-banka">
             <div class="bank-card">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span style="font-weight:bold;">MERKEZ BANKASI</span>
-                    <div>
-                        <span id="biz-status" class="badge badge-biz hidden" style="margin-right:4px;">💼 İş Hesabı</span>
-                        <span id="card-status" class="badge">Durum</span>
-                    </div>
+                    <span id="card-status" class="badge">Durum</span>
                 </div>
                 <div class="chip" style="margin-top:15px;"></div>
                 <div id="display-card-num" class="card-num">4444 **** **** ****</div>
@@ -113,7 +106,7 @@
                 </div>
             </div>
 
-            <!-- DOĞRULAMA UYARISI / KAMERA (144p) -->
+            <!-- DOĞRULAMA KUTUSU (144p Selfie) -->
             <div id="verify-warning-box" class="card" style="border:1px solid var(--warning-color);">
                 <h3 style="color:var(--warning-color); font-size:1rem;">⚠️ Kısıtlı Hesap</h3>
                 <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">
@@ -128,6 +121,15 @@
                 </div>
             </div>
 
+            <!-- İŞ HESABI (SATICI) BAŞVURU KUTUSU (Doğrulanmış hesaplar için) -->
+            <div id="business-request-box" class="card hidden" style="border:1px solid var(--business-color);">
+                <h3 style="color:var(--business-color); font-size:1rem;">💼 İş Hesabına Yükselt</h3>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">
+                    E-Pin satıcısı mısınız? İş Hesabı statüsüne geçerek kazandığınız paraları <b>%0 Komisyon (Sıfır Kesinti)</b> ile çekebilirsiniz!
+                </p>
+                <button id="btn-request-biz" onclick="requestBusinessAccount()" style="background:var(--business-color); color:black;">💼 İş Hesabı İzni İste (Admin Onaylı)</button>
+            </div>
+
             <div class="card">
                 <p style="color:var(--text-muted); font-size:0.85rem;">Toplam Bakiye</p>
                 <h1 id="user-balance" style="color:var(--success-color); margin-bottom:8px;">0.00 ₺</h1>
@@ -137,7 +139,6 @@
                 <button onclick="toggleQRModal()" style="background:#2a2a40; border:1px solid #3d3d5c; margin-top:10px; font-size:0.85rem;">📱 IBAN QR Kodumu Göster</button>
             </div>
 
-            <!-- QR KOD MODAL -->
             <div id="qr-box" class="card hidden">
                 <h3>📱 QR Kod ile Para Alma</h3>
                 <div class="qr-box">
@@ -146,16 +147,14 @@
                 <button onclick="toggleQRModal()" style="background:#444; margin-top:8px;">Kapat</button>
             </div>
 
-            <!-- HIZLI İŞLEMLER MENÜSÜ -->
             <div class="card grid-menu">
                 <button onclick="showForm('para-yatir')">💵 Para Yatır</button>
-                <button onclick="showForm('para-cek')" id="btn-para-cek">Atm Para Çek</button>
+                <button onclick="showForm('para-cek')">Atm Para Çek</button>
                 <button onclick="showForm('havale')">🔄 Havale Yap</button>
                 <button onclick="showForm('odeme')">🛍️ Kartla Öde</button>
                 <button onclick="showForm('kredi')">📑 Kredi Başvurusu</button>
             </div>
 
-            <!-- İŞLEM FORMLARI -->
             <div id="action-box" class="card hidden">
                 <h3 id="form-title">İşlem Yap</h3>
                 <div id="form-inputs"></div>
@@ -163,20 +162,17 @@
                 <button onclick="hideForm()" style="background:#444; margin-top:5px;">İptal</button>
             </div>
 
-            <!-- KREDİLERİM BÖLÜMÜ -->
             <div class="card">
                 <h3>💳 Aktif Kredilerim</h3>
                 <div id="user-krediler-list">Aktif krediniz bulunmuyor.</div>
             </div>
 
-            <!-- DEKONT / GEÇMİŞ İŞLEMLER -->
             <div class="card">
                 <h3>📜 Onaylanan Dekontlar & Geçmiş</h3>
                 <div id="user-dekontlar-list">İşlem geçmişi yükleniyor...</div>
             </div>
         </div>
 
-        <!-- SEKMELİ İÇERİK 2: E-PİN MARKETİ -->
         <div id="tab-content-market" class="hidden">
             <div class="card">
                 <h2>🛒 E-Pin Marketi</h2>
@@ -188,14 +184,12 @@
                 <div id="market-urunler-list">Yükleniyor...</div>
             </div>
 
-            <!-- SATIN ALINAN E-PİNLER/KODLAR -->
             <div class="card" style="border: 1px solid var(--success-color);">
                 <h3>🎁 Satın Aldığım E-Pinler & Kodlarım</h3>
                 <div id="user-epinler-list">Henüz satın aldığınız e-pin bulunmuyor.</div>
             </div>
         </div>
 
-        <!-- SANAL KART İLE E-PİN ÖDEME MODALI -->
         <div id="epin-buy-modal" class="card hidden" style="border: 1px solid var(--accent-color);">
             <h3 id="modal-epin-title">E-Pin Satın Al</h3>
             <p id="modal-epin-price" style="color:var(--success-color); font-weight:bold; margin-bottom:10px;"></p>
@@ -219,7 +213,11 @@
             <p>Banka Kasası: <b id="admin-kasa" style="color:var(--success-color);">0.00 ₺</b></p>
         </div>
 
-        <!-- E-PİN MARKETİ ÜRÜN & STOK EKLEME -->
+        <div class="card" style="border: 1px solid var(--business-color);">
+            <h3>💼 İş Hesabı (Satıcı) Başvuruları</h3>
+            <div id="admin-business-requests">Yükleniyor...</div>
+        </div>
+
         <div class="card" style="border: 1px solid var(--success-color);">
             <h3>🛒 E-Pin Ürün & Stok Ekle</h3>
             <input type="text" id="admin-epin-title" placeholder="Ürün Başlığı (Örn: Valorant 475 VP)">
@@ -245,14 +243,14 @@
                 <button onclick="adminUserAction('aktif_et')" style="background:#27ae60;">🟢 Aktif Et</button>
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
-                <button onclick="adminUserAction('is_hesabi_yap')" style="background:#00cec9; color:black;">💼 İş Hesabı Yap</button>
-                <button onclick="adminUserAction('bireysel_yap')" style="background:#74b9ff; color:black;">👤 Bireysel Yap</button>
+                <button onclick="adminUserAction('is_hesabi_yap')" style="background:var(--business-color); color:black;">💼 İş Hesabı Yap</button>
+                <button onclick="adminUserAction('is_hesabi_kaldir')" style="background:#d63031;">👤 Bireysele Düşür</button>
             </div>
         </div>
 
         <div class="card">
             <h3>⚙️ Komisyon & Ceza Ayarları</h3>
-            <label style="font-size:0.8rem;">Çekim Komisyonu (0.10 = %10):</label>
+            <label style="font-size:0.8rem;">Bireysel Çekim Komisyonu (0.10 = %10):</label>
             <input type="number" step="0.01" id="cfg-cekme">
             
             <label style="font-size:0.8rem;">Ödeme Komisyonu (0.60 = %60):</label>
@@ -385,35 +383,37 @@
         document.getElementById("user-score").innerText = u.kredi_notu;
 
         const statusBadge = document.getElementById("card-status");
-        const bizBadge = document.getElementById("biz-status");
         const verifyBox = document.getElementById("verify-warning-box");
+        const businessBox = document.getElementById("business-request-box");
 
-        if (u.hesap_turu === "is_hesabi") {
-            bizBadge.classList.remove("hidden");
-            document.getElementById("btn-para-cek").innerText = "Atm Para Çek (%0 İş)";
-        } else {
-            bizBadge.classList.add("hidden");
-            document.getElementById("btn-para-cek").innerText = "Atm Para Çek (%10)";
-        }
-
-        if (u.dogrulandi) {
-            statusBadge.innerText = "🟢 Doğrulanmış";
+        if (u.is_hesabi) {
+            statusBadge.innerText = "💼 İş Hesabı (Satıcı)";
+            statusBadge.className = "badge badge-business";
+            verifyBox.classList.add("hidden");
+            businessBox.classList.add("hidden");
+        } else if (u.dogrulandi) {
+            statusBadge.innerText = "🟢 Doğrulanmış Bireysel";
             statusBadge.className = "badge badge-success";
             verifyBox.classList.add("hidden");
+            businessBox.classList.remove("hidden");
+
+            if (data.is_hesabi_talep_var) {
+                document.getElementById("btn-request-biz").innerText = "⏳ İş Hesabı Başvurusu Onay Bekliyor...";
+                document.getElementById("btn-request-biz").disabled = true;
+            }
         } else {
             statusBadge.innerText = "🟡 Kısıtlı Hesap";
             statusBadge.className = "badge badge-warning";
             verifyBox.classList.remove("hidden");
+            businessBox.classList.add("hidden");
         }
 
-        // QR Kod
         new QRious({
             element: document.getElementById('iban-qr'),
             value: u.iban,
             size: 180
         });
 
-        // E-PİN MARKET ÜRÜNLERİNİ LİSTELE
         let marketHtml = "";
         const epinler = data.epin_urunler || {};
         for (let id in epinler) {
@@ -430,7 +430,6 @@
         }
         document.getElementById("market-urunler-list").innerHTML = marketHtml || "Şu an stokta e-pin ürünü bulunmuyor.";
 
-        // SATIN ALINAN E-PİNLERİ LİSTELE
         let alinanlarHtml = "";
         (data.satinalinan_epinler || []).forEach(item => {
             alinanlarHtml += `
@@ -442,7 +441,6 @@
         });
         document.getElementById("user-epinler-list").innerHTML = alinanlarHtml || "Henüz satın aldığınız e-pin bulunmuyor.";
 
-        // KREDİLERİ LİSTELE
         let kredilerHtml = "";
         (data.krediler || []).forEach(k => {
             kredilerHtml += `
@@ -464,7 +462,6 @@
         });
         document.getElementById("user-krediler-list").innerHTML = kredilerHtml || "Aktif krediniz bulunmuyor.";
 
-        // DEKONTLAR
         let dekontHtml = "";
         (data.dekontlar || []).forEach(d => {
             dekontHtml += `<div class="dekont-item">
@@ -474,6 +471,13 @@
             </div>`;
         });
         document.getElementById("user-dekontlar-list").innerHTML = dekontHtml || "Henüz onaylanmış dekontunuz yok.";
+    }
+
+    async function requestBusinessAccount() {
+        const res = await fetch('/api/user/request-business', { method: 'POST' });
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) location.reload();
     }
 
     function openEpinModal(id, baslik, fiyat) {
@@ -585,8 +589,9 @@
                 kanit: document.getElementById("act-kanit").value
             });
         } else if (type === 'para-cek') {
-            const isBiz = currentUser && currentUser.hesap_turu === "is_hesabi";
-            document.getElementById("form-title").innerText = isBiz ? "Atm Para Çek (💼 İş Hesabı - %0 Komisyon)" : "Atm Para Çek (%10 Komisyonlu)";
+            const isBiz = currentUser && currentUser.is_hesabi;
+            const titleMsg = isBiz ? "Atm Para Çek (💼 İş Hesabı: %0 Komisyon)" : "Atm Para Çek (%10 Komisyonlu)";
+            document.getElementById("form-title").innerText = titleMsg;
             inputs.innerHTML = `<input type="number" id="act-tutar" placeholder="Çekilecek Tutar (TL)">`;
             submitBtn.onclick = () => submitAction('/api/action/para-cek', {tutar: document.getElementById("act-tutar").value});
         } else if (type === 'odeme') {
@@ -654,6 +659,17 @@
             document.getElementById("cfg-faiz").value = cfg.kredi_faiz || 0.05;
             document.getElementById("cfg-ceza").value = cfg.gecikme_cezasi || 50.0;
 
+            let bizReqHtml = "";
+            for (let email in data.is_hesabi_talepleri) {
+                let req = data.is_hesabi_talepleri[email];
+                bizReqHtml += `<div style="background:#151525; padding:10px; margin-bottom:5px; border-radius:6px; font-size:0.85rem;">
+                    <b>${req.ad_soyad}</b> (${email}) - ${req.tarih}<br>
+                    <button onclick="approveBusiness('${email}', 'onay')" style="background:var(--business-color); color:black; padding:5px 10px; width:auto; font-size:0.8rem; margin-top:5px;">💼 İş Hesabını Onayla (%0 Komisyon)</button>
+                    <button onclick="approveBusiness('${email}', 'red')" style="background:var(--danger-color); padding:5px 10px; width:auto; font-size:0.8rem; margin-top:5px;">Reddet</button>
+                </div>`;
+            }
+            document.getElementById("admin-business-requests").innerHTML = bizReqHtml || "Bekleyen İş Hesabı başvurusu yok.";
+
             let epinAdminHtml = "";
             const epinler = data.epin_urunler || {};
             for (let id in epinler) {
@@ -667,8 +683,7 @@
 
             let selectHtml = "";
             for (let email in data.users) {
-                let hTur = data.users[email].hesap_turu === "is_hesabi" ? "💼 İş" : "👤 Bireysel";
-                selectHtml += `<option value="${email}">[${hTur}] ${data.users[email].ad_soyad} (${email})</option>`;
+                selectHtml += `<option value="${email}">${data.users[email].ad_soyad} (${email})</option>`;
             }
             document.getElementById("admin-user-select").innerHTML = selectHtml;
 
@@ -689,7 +704,6 @@
                 let t = data.bekleyen_talepler[id];
                 reqHtml += `<div style="background:#151525; padding:10px; margin-bottom:5px; border-radius:6px;">
                     <b>${t.tur.toUpperCase()}</b> - ${t.user_id} - ${t.tutar || t.toplam} TL 
-                    ${t.komisyon !== undefined ? `(Komisyon: ${t.komisyon} TL)` : ''}
                     ${t.hafta ? `(${t.hafta} Hafta)` : ''}
                     <button onclick="approveReq('${id}', 'onay')" style="width:auto; padding:5px 10px; background:var(--success-color);">Onayla</button>
                     <button onclick="approveReq('${id}', 'red')" style="width:auto; padding:5px 10px; background:var(--danger-color);">Reddet</button>
@@ -700,14 +714,23 @@
             let userHtml = "";
             for (let email in data.users) {
                 let u = data.users[email];
-                let typeBadge = u.hesap_turu === "is_hesabi" ? "<span class='badge badge-biz'>💼 İş Hesabı (%0)</span>" : "<span class='badge' style='background:#444;'>👤 Bireysel</span>";
+                let statuStr = u.is_hesabi ? "<b style='color:var(--business-color)'>[💼 İŞ HESABI]</b>" : (u.dogrulandi ? "<b style='color:var(--success-color)'>[🟢 BİREYSEL DOĞRULANMIŞ]</b>" : "<b style='color:var(--warning-color)'>[🟡 KISITLI]</b>");
                 userHtml += `<div style="background:#151525; padding:10px; margin-bottom:5px; border-radius:6px; font-size:0.85rem;">
-                    <b>${u.ad_soyad}</b> (${email}) ${typeBadge}<br>
+                    <b>${u.ad_soyad}</b> (${email}) ${statuStr}<br>
                     Bakiye: <b>${u.bakiye} TL</b> | Aktif Kredi: <b>${(u.krediler||[]).length}</b> | E-Pin: <b>${(u.satinalinan_epinler||[]).length}</b>
                 </div>`;
             }
             document.getElementById("admin-users-list").innerHTML = userHtml;
         }
+    }
+
+    async function approveBusiness(email, act) {
+        await fetch('/api/admin/approve-business', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email: email, action: act})
+        });
+        loadAdminData();
     }
 
     async function addEpinProduct() {
