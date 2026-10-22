@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DEKONTİKA | Merkez Bankası</title>
+    <title>DEKONTİKA | Merkez Bankası & E-Pin Marketi</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         :root {
             --bg-color: #0f0f1a;
@@ -17,29 +18,49 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; min-height: 100vh; padding: 20px; }
+        body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; min-height: 100vh; padding: 15px; }
         .app-container { width: 100%; max-width: 480px; }
         
-        .card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-        .bank-card { background: linear-gradient(135deg, #4834d4, #6c5ce7); color: white; border-radius: 16px; padding: 20px; position: relative; overflow: hidden; margin-bottom: 20px; }
+        .card { background: var(--card-bg); border-radius: 16px; padding: 18px; margin-bottom: 15px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+        .bank-card { background: linear-gradient(135deg, #4834d4, #6c5ce7); color: white; border-radius: 16px; padding: 20px; position: relative; overflow: hidden; margin-bottom: 15px; }
         .bank-card .chip { width: 45px; height: 30px; background: #f9ca24; border-radius: 6px; margin-bottom: 20px; }
         .bank-card .card-num { font-size: 1.2rem; letter-spacing: 2px; margin-bottom: 15px; }
         
-        h2, h3 { margin-bottom: 15px; }
-        input, button { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #151525; color: white; margin-bottom: 12px; font-size: 1rem; }
+        h2, h3 { margin-bottom: 12px; }
+        input, select, textarea, button { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #333; background: #151525; color: white; margin-bottom: 10px; font-size: 0.95rem; }
         button { background: var(--accent-color); border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
         button:hover { opacity: 0.9; }
         
-        .grid-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .grid-menu button { background: #2a2a40; border: 1px solid #3d3d5c; font-size: 0.9rem; margin: 0; }
+        /* ÜST SEÇİM SEKMELERİ (BANKA vs MARKET) */
+        .tab-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+        .tab-nav button { background: #2a2a40; border: 1px solid #3d3d5c; padding: 12px; margin: 0; }
+        .tab-nav button.active { background: var(--accent-color); border-color: var(--accent-color); }
+
+        .grid-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .grid-menu button { background: #2a2a40; border: 1px solid #3d3d5c; font-size: 0.85rem; margin: 0; padding: 12px 5px; }
         
         .hidden { display: none; }
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
-        .badge-success { background: var(--success-color); }
-        .badge-danger { background: var(--danger-color); }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; }
+        .badge-success { background: var(--success-color); color: white; }
+        .badge-danger { background: var(--danger-color); color: white; }
         .badge-warning { background: var(--warning-color); color: black; }
+        .badge-biz { background: #00cec9; color: black; font-weight: bold; }
 
-        video, canvas { width: 100%; border-radius: 8px; margin-bottom: 10px; }
+        video, canvas { width: 100%; border-radius: 8px; margin-bottom: 8px; }
+        .qr-box { text-align: center; background: white; padding: 15px; border-radius: 12px; margin: 10px 0; }
+        .dekont-item { background: #151525; border-left: 4px solid var(--accent-color); padding: 10px; margin-bottom: 8px; border-radius: 6px; font-size: 0.85rem; }
+        
+        /* E-PİN MARKET KARTLARI */
+        .market-card { background: #151525; border: 1px solid #333; border-radius: 12px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .market-card-title { font-weight: bold; color: white; }
+        .market-card-sub { font-size: 0.8rem; color: var(--text-muted); }
+        .market-card button { width: auto; padding: 8px 12px; margin: 0; font-size: 0.85rem; background: var(--success-color); }
+
+        /* KREDİ KUTUCUKLARI */
+        .kredi-card { background: #151525; border: 1px solid #333; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+        .kredi-card-title { display: flex; justify-content: space-between; font-weight: bold; color: var(--warning-color); margin-bottom: 8px; }
+        .kredi-btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+        .kredi-btn-group button { font-size: 0.8rem; padding: 8px 4px; margin: 0; }
     </style>
 </head>
 <body>
@@ -47,74 +68,145 @@
 <div class="app-container">
     <!-- GİRİŞ & KAYIT EKRANI -->
     <div id="auth-box" class="card">
-        <h2>🏦 DEKONTİKA Banka</h2>
+        <h2>🏦 DEKONTİKA Platformu</h2>
         
         <div id="login-form">
-            <input type="text" id="login-email" placeholder="E-Posta Adresi (Örn: isim@mail.com) veya 'Admin'">
+            <input type="text" id="login-email" placeholder="E-Posta (isim@mail.com) veya 'Admin'">
             <input type="password" id="login-pass" placeholder="Parola">
             <button onclick="login()">Giriş Yap</button>
-            <p style="text-align:center; font-size:0.9rem; color:var(--text-muted); cursor:pointer;" onclick="toggleAuth('register')">Hesabın yok mu? Kayıt Ol</p>
+            <p style="text-align:center; font-size:0.85rem; color:var(--text-muted); cursor:pointer;" onclick="toggleAuth('register')">Hesabın yok mu? Kayıt Ol</p>
         </div>
 
         <div id="register-form" class="hidden">
             <input type="text" id="reg-name" placeholder="Ad Soyad">
-            <input type="email" id="reg-email" placeholder="Geçerli E-Posta Adresi (Zorunlu)">
+            <input type="email" id="reg-email" placeholder="Geçerli E-Posta Adresi">
             <input type="password" id="reg-pass" placeholder="Şifre Oluştur">
             <button onclick="register()">Anında Kayıt Ol (Kodsuz)</button>
-            <p style="text-align:center; font-size:0.9rem; color:var(--text-muted); cursor:pointer;" onclick="toggleAuth('login')">Zaten hesabın var mı? Giriş Yap</p>
+            <p style="text-align:center; font-size:0.85rem; color:var(--text-muted); cursor:pointer;" onclick="toggleAuth('login')">Zaten hesabın var mı? Giriş Yap</p>
         </div>
     </div>
 
-    <!-- MÜŞTERİ PANELİ -->
+    <!-- MÜŞTERİ PANELİ (BANKA + E-PİN MARKETİ SEKMELERİ) -->
     <div id="user-panel" class="hidden">
-        <div class="bank-card">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-weight:bold;">MERKEZ BANKASI</span>
-                <span id="card-status" class="badge">Durum</span>
+        <!-- ANA SEKMELER -->
+        <div class="tab-nav">
+            <button id="tab-btn-banka" class="active" onclick="switchTab('banka')">🏦 Banka Hesabım</button>
+            <button id="tab-btn-market" onclick="switchTab('market')">🛒 E-Pin Marketi</button>
+        </div>
+
+        <!-- SEKMELİ İÇERİK 1: BANKA HESABIM -->
+        <div id="tab-content-banka">
+            <div class="bank-card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:bold;">MERKEZ BANKASI</span>
+                    <div>
+                        <span id="biz-status" class="badge badge-biz hidden" style="margin-right:4px;">💼 İş Hesabı</span>
+                        <span id="card-status" class="badge">Durum</span>
+                    </div>
+                </div>
+                <div class="chip" style="margin-top:15px;"></div>
+                <div id="display-card-num" class="card-num">4444 **** **** ****</div>
+                <div style="display:flex; justify-content:space-between; font-size:0.8rem;">
+                    <span id="display-name">AD SOYAD</span>
+                    <span id="display-skt">SKT: 12/28</span>
+                    <span id="display-cvv">CVV: ***</span>
+                </div>
             </div>
-            <div class="chip" style="margin-top:15px;"></div>
-            <div id="display-card-num" class="card-num">4444 **** **** ****</div>
-            <div style="display:flex; justify-content:space-between; font-size:0.8rem;">
-                <span id="display-name">AD SOYAD</span>
-                <span id="display-skt">SKT: 12/28</span>
-                <span id="display-cvv">CVV: ***</span>
+
+            <!-- DOĞRULAMA UYARISI / KAMERA (144p) -->
+            <div id="verify-warning-box" class="card" style="border:1px solid var(--warning-color);">
+                <h3 style="color:var(--warning-color); font-size:1rem;">⚠️ Kısıtlı Hesap</h3>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">
+                    Havale limitiniz maks 500 TL'dir. Yüz doğrulaması yaparak limitleri kaldırabilirsiniz.
+                </p>
+                <button onclick="startCamera()" style="background:var(--warning-color); color:black;">📷 Yüz Doğrulama (144p Selfie)</button>
+                
+                <div id="camera-section" class="hidden" style="margin-top:8px;">
+                    <video id="webcam" autoplay playsinline></video>
+                    <button onclick="takeSnapshot()" style="background:var(--success-color);">144p Çek ve Onaya Gönder</button>
+                    <canvas id="snapshot-canvas" class="hidden" width="256" height="144"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <p style="color:var(--text-muted); font-size:0.85rem;">Toplam Bakiye</p>
+                <h1 id="user-balance" style="color:var(--success-color); margin-bottom:8px;">0.00 ₺</h1>
+                <p style="font-size:0.8rem; color:var(--text-muted);">IBAN: <b id="user-iban" style="color:white;">TR000...</b></p>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Kredi Notu: <b id="user-score">1000</b></p>
+                
+                <button onclick="toggleQRModal()" style="background:#2a2a40; border:1px solid #3d3d5c; margin-top:10px; font-size:0.85rem;">📱 IBAN QR Kodumu Göster</button>
+            </div>
+
+            <!-- QR KOD MODAL -->
+            <div id="qr-box" class="card hidden">
+                <h3>📱 QR Kod ile Para Alma</h3>
+                <div class="qr-box">
+                    <canvas id="iban-qr"></canvas>
+                </div>
+                <button onclick="toggleQRModal()" style="background:#444; margin-top:8px;">Kapat</button>
+            </div>
+
+            <!-- HIZLI İŞLEMLER MENÜSÜ -->
+            <div class="card grid-menu">
+                <button onclick="showForm('para-yatir')">💵 Para Yatır</button>
+                <button onclick="showForm('para-cek')" id="btn-para-cek">Atm Para Çek</button>
+                <button onclick="showForm('havale')">🔄 Havale Yap</button>
+                <button onclick="showForm('odeme')">🛍️ Kartla Öde</button>
+                <button onclick="showForm('kredi')">📑 Kredi Başvurusu</button>
+            </div>
+
+            <!-- İŞLEM FORMLARI -->
+            <div id="action-box" class="card hidden">
+                <h3 id="form-title">İşlem Yap</h3>
+                <div id="form-inputs"></div>
+                <button id="form-submit-btn">Gönder</button>
+                <button onclick="hideForm()" style="background:#444; margin-top:5px;">İptal</button>
+            </div>
+
+            <!-- KREDİLERİM BÖLÜMÜ -->
+            <div class="card">
+                <h3>💳 Aktif Kredilerim</h3>
+                <div id="user-krediler-list">Aktif krediniz bulunmuyor.</div>
+            </div>
+
+            <!-- DEKONT / GEÇMİŞ İŞLEMLER -->
+            <div class="card">
+                <h3>📜 Onaylanan Dekontlar & Geçmiş</h3>
+                <div id="user-dekontlar-list">İşlem geçmişi yükleniyor...</div>
             </div>
         </div>
 
-        <!-- DOĞRULAMA UYARISI / KAMERA KUTUSU -->
-        <div id="verify-warning-box" class="card" style="border:1px solid var(--warning-color);">
-            <h3 style="color:var(--warning-color);">⚠️ Kısıtlı Hesap</h3>
-            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">
-                Hesabınız henüz doğrulanmadı. Havale limitiniz max 500 TL'dir, kartla ödeme ve kredi kullanımı kapalıdır.
-            </p>
-            <button onclick="startCamera()" style="background:var(--warning-color); color:black;">📷 Yüz Doğrulama (360p Selfie Çek)</button>
+        <!-- SEKMELİ İÇERİK 2: E-PİN MARKETİ -->
+        <div id="tab-content-market" class="hidden">
+            <div class="card">
+                <h2>🛒 E-Pin Marketi</h2>
+                <p style="font-size:0.8rem; color:var(--text-muted);">Sanal kart bilgilerinizi girerek anında stoktan e-pin satın alabilirsiniz.</p>
+            </div>
+
+            <div class="card">
+                <h3>📦 Mevcut E-Pin Ürünleri</h3>
+                <div id="market-urunler-list">Yükleniyor...</div>
+            </div>
+
+            <!-- SATIN ALINAN E-PİNLER/KODLAR -->
+            <div class="card" style="border: 1px solid var(--success-color);">
+                <h3>🎁 Satın Aldığım E-Pinler & Kodlarım</h3>
+                <div id="user-epinler-list">Henüz satın aldığınız e-pin bulunmuyor.</div>
+            </div>
+        </div>
+
+        <!-- SANAL KART İLE E-PİN ÖDEME MODALI -->
+        <div id="epin-buy-modal" class="card hidden" style="border: 1px solid var(--accent-color);">
+            <h3 id="modal-epin-title">E-Pin Satın Al</h3>
+            <p id="modal-epin-price" style="color:var(--success-color); font-weight:bold; margin-bottom:10px;"></p>
             
-            <div id="camera-section" class="hidden" style="margin-top:10px;">
-                <video id="webcam" autoplay playsinline></video>
-                <button onclick="takeSnapshot()" style="background:var(--success-color);">Çek ve Admin Onayına Gönder</button>
-                <canvas id="snapshot-canvas" class="hidden" width="640" height="360"></canvas>
-            </div>
-        </div>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">Ödeme için sanal kart bilgilerinizi doğrulayın (İsim gerekmez):</p>
+            <input type="text" id="buy-card-no" placeholder="Kart Numarası (4444 **** **** ****)">
+            <input type="text" id="buy-card-skt" placeholder="SKT (12/28)">
+            <input type="text" id="buy-card-cvv" placeholder="CVV (123)">
 
-        <div class="card">
-            <p style="color:var(--text-muted);">Toplam Bakiye</p>
-            <h1 id="user-balance" style="color:var(--success-color); margin-bottom:10px;">0.00 ₺</h1>
-            <p style="font-size:0.85rem; color:var(--text-muted);">IBAN: <b id="user-iban" style="color:white;">TR000...</b></p>
-            <p style="font-size:0.85rem; color:var(--text-muted); margin-top:5px;">Kredi Borcu: <b id="user-debt" style="color:var(--danger-color);">0.00 ₺</b> | Kredi Notu: <b id="user-score">1000</b></p>
-        </div>
-
-        <div class="card grid-menu">
-            <button onclick="showForm('odeme')">🛍️ Ödeme Yap</button>
-            <button onclick="showForm('havale')">🔄 Havale Yap</button>
-            <button onclick="showForm('kredi')">📑 Kredi Çek</button>
-            <button onclick="showForm('kredi-ode')">💸 Kredi Öde</button>
-        </div>
-
-        <div id="action-box" class="card hidden">
-            <h3 id="form-title">İşlem Yap</h3>
-            <div id="form-inputs"></div>
-            <button id="form-submit-btn">Gönder</button>
-            <button onclick="hideForm()" style="background:#444; margin-top:5px;">İptal</button>
+            <button onclick="confirmBuyEpin()" style="background:var(--success-color);">Ödemeyi Onayla & Kodu Al</button>
+            <button onclick="closeEpinModal()" style="background:#444; margin-top:5px;">İptal</button>
         </div>
 
         <button onclick="logout()" style="background:#333; margin-top:10px;">Çıkış Yap</button>
@@ -127,9 +219,65 @@
             <p>Banka Kasası: <b id="admin-kasa" style="color:var(--success-color);">0.00 ₺</b></p>
         </div>
 
+        <!-- E-PİN MARKETİ ÜRÜN & STOK EKLEME -->
+        <div class="card" style="border: 1px solid var(--success-color);">
+            <h3>🛒 E-Pin Ürün & Stok Ekle</h3>
+            <input type="text" id="admin-epin-title" placeholder="Ürün Başlığı (Örn: Valorant 475 VP)">
+            <input type="number" id="admin-epin-price" placeholder="Fiyat (TL)">
+            <textarea id="admin-epin-codes" rows="3" placeholder="E-Pin Kodları (Her satıra 1 kod gelecek şekilde yapıştırın)"></textarea>
+            <button onclick="addEpinProduct()" style="background:var(--success-color);">Ürün & Stok Yükle</button>
+        </div>
+
+        <div class="card">
+            <h3>📦 Aktif E-Pin Stok Durumu</h3>
+            <div id="admin-epin-list">Yükleniyor...</div>
+        </div>
+
+        <div class="card" style="border: 1px solid var(--accent-color);">
+            <h3>🛠️ Kullanıcı Yönetimi / Müdahale</h3>
+            <select id="admin-user-select"></select>
+            <input type="number" id="admin-amount-input" placeholder="Tutar (TL)">
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-bottom:5px;">
+                <button onclick="adminUserAction('bakiye_ekle')" style="background:var(--success-color);">➕ Bakiye Ekle</button>
+                <button onclick="adminUserAction('bakiye_kes')" style="background:var(--danger-color);">➖ Bakiye Kes</button>
+                <button onclick="adminUserAction('dondur')" style="background:#c0392b;">🔴 Dondur</button>
+                <button onclick="adminUserAction('aktif_et')" style="background:#27ae60;">🟢 Aktif Et</button>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
+                <button onclick="adminUserAction('is_hesabi_yap')" style="background:#00cec9; color:black;">💼 İş Hesabı Yap</button>
+                <button onclick="adminUserAction('bireysel_yap')" style="background:#74b9ff; color:black;">👤 Bireysel Yap</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>⚙️ Komisyon & Ceza Ayarları</h3>
+            <label style="font-size:0.8rem;">Çekim Komisyonu (0.10 = %10):</label>
+            <input type="number" step="0.01" id="cfg-cekme">
+            
+            <label style="font-size:0.8rem;">Ödeme Komisyonu (0.60 = %60):</label>
+            <input type="number" step="0.01" id="cfg-odeme">
+            
+            <label style="font-size:0.8rem;">Havale Komisyonu (0.05 = %5):</label>
+            <input type="number" step="0.01" id="cfg-havale">
+
+            <label style="font-size:0.8rem;">Kredi Temel Faiz Oranı (0.05 = %5):</label>
+            <input type="number" step="0.01" id="cfg-faiz">
+
+            <label style="font-size:0.8rem;">Haftalık Gecikme Cezası (TL):</label>
+            <input type="number" id="cfg-ceza">
+
+            <button onclick="saveAdminSettings()" style="background:var(--accent-color);">Ayarları Kaydet</button>
+        </div>
+
         <div class="card" style="border: 1px solid var(--warning-color);">
-            <h3>🤳 Yüz Doğrulama Talepleri (360p Selfie)</h3>
+            <h3>🤳 Yüz Doğrulama Talepleri (144p)</h3>
             <div id="admin-verify-requests">Yükleniyor...</div>
+        </div>
+
+        <div class="card">
+            <h3>⏳ Onay Bekleyen İşlemler</h3>
+            <div id="admin-requests">Talepler yükleniyor...</div>
         </div>
 
         <div class="card" style="border: 1px dashed var(--accent-color);">
@@ -144,11 +292,6 @@
         </div>
 
         <div class="card">
-            <h3>⏳ Onay Bekleyen İşlemler</h3>
-            <div id="admin-requests">Talepler yükleniyor...</div>
-        </div>
-
-        <div class="card">
             <h3>👥 TÜM HESAPLAR</h3>
             <div id="admin-users-list">Yükleniyor...</div>
         </div>
@@ -160,12 +303,20 @@
 <script>
     let currentUser = null;
     let videoStream = null;
+    let selectedEpinId = null;
 
     window.onload = () => {
         const savedEmail = localStorage.getItem("dekontika_email");
         if (savedEmail) document.getElementById("login-email").value = savedEmail;
         checkSession();
     };
+
+    function switchTab(tab) {
+        document.getElementById("tab-content-banka").classList.toggle("hidden", tab !== 'banka');
+        document.getElementById("tab-content-market").classList.toggle("hidden", tab !== 'market');
+        document.getElementById("tab-btn-banka").className = (tab === 'banka') ? 'active' : '';
+        document.getElementById("tab-btn-market").className = (tab === 'market') ? 'active' : '';
+    }
 
     function toggleAuth(type) {
         document.getElementById("login-form").classList.toggle("hidden", type !== 'login');
@@ -231,11 +382,19 @@
         document.getElementById("display-cvv").innerText = "CVV: " + u.cvv;
         document.getElementById("user-balance").innerText = u.bakiye.toLocaleString('tr-TR', {minimumFractionDigits:2}) + " ₺";
         document.getElementById("user-iban").innerText = u.iban;
-        document.getElementById("user-debt").innerText = u.kredi_borcu.toLocaleString('tr-TR', {minimumFractionDigits:2}) + " ₺";
         document.getElementById("user-score").innerText = u.kredi_notu;
 
         const statusBadge = document.getElementById("card-status");
+        const bizBadge = document.getElementById("biz-status");
         const verifyBox = document.getElementById("verify-warning-box");
+
+        if (u.hesap_turu === "is_hesabi") {
+            bizBadge.classList.remove("hidden");
+            document.getElementById("btn-para-cek").innerText = "Atm Para Çek (%0 İş)";
+        } else {
+            bizBadge.classList.add("hidden");
+            document.getElementById("btn-para-cek").innerText = "Atm Para Çek (%10)";
+        }
 
         if (u.dogrulandi) {
             statusBadge.innerText = "🟢 Doğrulanmış";
@@ -246,15 +405,147 @@
             statusBadge.className = "badge badge-warning";
             verifyBox.classList.remove("hidden");
         }
+
+        // QR Kod
+        new QRious({
+            element: document.getElementById('iban-qr'),
+            value: u.iban,
+            size: 180
+        });
+
+        // E-PİN MARKET ÜRÜNLERİNİ LİSTELE
+        let marketHtml = "";
+        const epinler = data.epin_urunler || {};
+        for (let id in epinler) {
+            let prod = epinler[id];
+            let stokSayisi = (prod.stok_kodlar || []).length;
+            marketHtml += `
+            <div class="market-card">
+                <div>
+                    <div class="market-card-title">${prod.baslik}</div>
+                    <div class="market-card-sub">Fiyat: <b style="color:var(--success-color);">${prod.fiyat} TL</b> | Stok: ${stokSayisi} Adet</div>
+                </div>
+                <button onclick="openEpinModal('${prod.id}', '${prod.baslik}', ${prod.fiyat})">Satın Al</button>
+            </div>`;
+        }
+        document.getElementById("market-urunler-list").innerHTML = marketHtml || "Şu an stokta e-pin ürünü bulunmuyor.";
+
+        // SATIN ALINAN E-PİNLERİ LİSTELE
+        let alinanlarHtml = "";
+        (data.satinalinan_epinler || []).forEach(item => {
+            alinanlarHtml += `
+            <div class="dekont-item" style="border-left-color:var(--success-color);">
+                <b>${item.urun_adi}</b> - <b style="color:var(--warning-color);">${item.fiyat} TL</b><br>
+                E-Pin Kodu: <code style="background:#000; padding:3px 6px; border-radius:4px; color:#00ffcc; font-size:1rem;">${item.kod}</code><br>
+                <small style="color:var(--text-muted);">${item.tarih}</small>
+            </div>`;
+        });
+        document.getElementById("user-epinler-list").innerHTML = alinanlarHtml || "Henüz satın aldığınız e-pin bulunmuyor.";
+
+        // KREDİLERİ LİSTELE
+        let kredilerHtml = "";
+        (data.krediler || []).forEach(k => {
+            kredilerHtml += `
+            <div class="kredi-card">
+                <div class="kredi-card-title">
+                    <span>${k.kredi_id}</span>
+                    <span>${k.kalan_borc} TL</span>
+                </div>
+                <div style="font-size:0.8rem; color:var(--text-muted); line-height:1.4;">
+                    Çekilen: <b>${k.ana_para} TL</b> | Toplam Geri Ödeme: <b>${k.toplam_borc} TL</b><br>
+                    Vade: <b>${k.kalan_hafta} / ${k.toplam_hafta} Hafta</b> | Faiz: <b>%${k.faiz_orani}</b><br>
+                    Haftalık Taksit: <b style="color:white;">${k.haftalik_taksit} TL</b>
+                </div>
+                <div class="kredi-btn-group">
+                    <button onclick="payLoanWeekly('${k.kredi_id}')" style="background:var(--accent-color);">Haftalığı Öde (${k.haftalik_taksit} ₺)</button>
+                    <button onclick="payLoanFull('${k.kredi_id}')" style="background:var(--success-color);">Tamamını Öde (${k.kalan_borc} ₺)</button>
+                </div>
+            </div>`;
+        });
+        document.getElementById("user-krediler-list").innerHTML = kredilerHtml || "Aktif krediniz bulunmuyor.";
+
+        // DEKONTLAR
+        let dekontHtml = "";
+        (data.dekontlar || []).forEach(d => {
+            dekontHtml += `<div class="dekont-item">
+                <b>${d.dekont_no}</b> - <span style="color:var(--warning-color);">${d.tur}</span><br>
+                Tutar: <b>${d.tutar} TL</b> | Tarih: ${d.tarih}<br>
+                <small style="color:var(--text-muted);">${d.aciklama}</small>
+            </div>`;
+        });
+        document.getElementById("user-dekontlar-list").innerHTML = dekontHtml || "Henüz onaylanmış dekontunuz yok.";
+    }
+
+    function openEpinModal(id, baslik, fiyat) {
+        selectedEpinId = id;
+        document.getElementById("modal-epin-title").innerText = baslik;
+        document.getElementById("modal-epin-price").innerText = "Tutar: " + fiyat + " TL";
+        document.getElementById("epin-buy-modal").classList.remove("hidden");
+    }
+
+    function closeEpinModal() {
+        document.getElementById("epin-buy-modal").classList.add("hidden");
+        selectedEpinId = null;
+    }
+
+    async function confirmBuyEpin() {
+        if (!selectedEpinId) return;
+
+        const cardNo = document.getElementById("buy-card-no").value;
+        const skt = document.getElementById("buy-card-skt").value;
+        const cvv = document.getElementById("buy-card-cvv").value;
+
+        if (!cardNo || !skt || !cvv) return alert("Lütfen tüm sanal kart bilgilerini doldurun.");
+
+        const res = await fetch('/api/market/buy-epin', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                urun_id: selectedEpinId,
+                kart_no: cardNo,
+                skt: skt,
+                cvv: cvv
+            })
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) location.reload();
+    }
+
+    async function payLoanWeekly(krediId) {
+        const res = await fetch('/api/action/kredi-ode-haftalik', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({kredi_id: krediId})
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) location.reload();
+    }
+
+    async function payLoanFull(krediId) {
+        if (!confirm("Kredinin kalan borcunun tamamını ödemek istediğinizden emin misiniz?")) return;
+        const res = await fetch('/api/action/kredi-ode-tamami', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({kredi_id: krediId})
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) location.reload();
+    }
+
+    function toggleQRModal() {
+        document.getElementById("qr-box").classList.toggle("hidden");
     }
 
     async function startCamera() {
         document.getElementById("camera-section").classList.remove("hidden");
         try {
-            videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 } });
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 256, height: 144 } });
             document.getElementById("webcam").srcObject = videoStream;
         } catch (err) {
-            alert("Kamera erişimi reddedildi veya bulunamadı!");
+            alert("Kamera erişimi reddedildi!");
         }
     }
 
@@ -262,10 +553,9 @@
         const video = document.getElementById("webcam");
         const canvas = document.getElementById("snapshot-canvas");
         const ctx = canvas.getContext("2d");
-        ctx.drawImage(video, 0, 0, 640, 360);
+        ctx.drawImage(video, 0, 0, 256, 144);
         
-        const base64Img = canvas.toDataURL("image/jpeg", 0.7); // 360p kalitesinde base64
-
+        const base64Img = canvas.toDataURL("image/jpeg", 0.5);
         if (videoStream) videoStream.getTracks().forEach(track => track.stop());
 
         const res = await fetch('/api/user/upload-selfie', {
@@ -284,7 +574,22 @@
         const submitBtn = document.getElementById("form-submit-btn");
         box.classList.remove("hidden");
 
-        if (type === 'odeme') {
+        if (type === 'para-yatir') {
+            document.getElementById("form-title").innerText = "💵 Para Yatırma Talebi";
+            inputs.innerHTML = `
+                <input type="number" id="act-tutar" placeholder="Yatırılacak Tutar (TL)">
+                <input type="text" id="act-kanit" placeholder="Açıklama / Dekont Notu">
+            `;
+            submitBtn.onclick = () => submitAction('/api/action/para-yatir', {
+                tutar: document.getElementById("act-tutar").value,
+                kanit: document.getElementById("act-kanit").value
+            });
+        } else if (type === 'para-cek') {
+            const isBiz = currentUser && currentUser.hesap_turu === "is_hesabi";
+            document.getElementById("form-title").innerText = isBiz ? "Atm Para Çek (💼 İş Hesabı - %0 Komisyon)" : "Atm Para Çek (%10 Komisyonlu)";
+            inputs.innerHTML = `<input type="number" id="act-tutar" placeholder="Çekilecek Tutar (TL)">`;
+            submitBtn.onclick = () => submitAction('/api/action/para-cek', {tutar: document.getElementById("act-tutar").value});
+        } else if (type === 'odeme') {
             document.getElementById("form-title").innerText = "🛍️ Kredi Kartı ile Ödeme";
             inputs.innerHTML = `
                 <input type="number" id="act-fiyat" placeholder="Ürün Fiyatı (TL)">
@@ -305,13 +610,21 @@
                 tutar: document.getElementById("act-tutar").value
             });
         } else if (type === 'kredi') {
-            document.getElementById("form-title").innerText = "📑 Kredi Başvurusu";
-            inputs.innerHTML = `<input type="number" id="act-tutar" placeholder="Çekilecek Tutar (TL)">`;
-            submitBtn.onclick = () => submitAction('/api/action/kredi-cek', {tutar: document.getElementById("act-tutar").value});
-        } else if (type === 'kredi-ode') {
-            document.getElementById("form-title").innerText = "💸 Kredi Borcu Öde";
-            inputs.innerHTML = `<input type="number" id="act-tutar" placeholder="Ödenecek Tutar (TL)">`;
-            submitBtn.onclick = () => submitAction('/api/action/kredi-ode', {tutar: document.getElementById("act-tutar").value});
+            document.getElementById("form-title").innerText = "📑 Kredi Başvurusu (3-12 Hafta)";
+            inputs.innerHTML = `
+                <input type="number" id="act-tutar" placeholder="Çekilecek Tutar (TL)">
+                <label style="font-size:0.8rem; color:var(--text-muted);">Geri Ödeme Süresi (Hafta):</label>
+                <select id="act-hafta">
+                    <option value="3">3 Hafta (1x Faiz)</option>
+                    <option value="6">6 Hafta (2x Faiz)</option>
+                    <option value="9">9 Hafta (3x Faiz)</option>
+                    <option value="12">12 Hafta (4x Faiz)</option>
+                </select>
+            `;
+            submitBtn.onclick = () => submitAction('/api/action/kredi-cek', {
+                tutar: document.getElementById("act-tutar").value,
+                hafta: document.getElementById("act-hafta").value
+            });
         }
     }
 
@@ -334,42 +647,131 @@
             const data = await res.json();
             document.getElementById("admin-kasa").innerText = data.kasa.toLocaleString('tr-TR', {minimumFractionDigits:2}) + " ₺";
 
-            // Yüz Doğrulama Talepleri
+            const cfg = data.ayarlar || {};
+            document.getElementById("cfg-cekme").value = cfg.komisyon_cekme || 0.10;
+            document.getElementById("cfg-odeme").value = cfg.komisyon_odeme || 0.60;
+            document.getElementById("cfg-havale").value = cfg.komisyon_havale || 0.05;
+            document.getElementById("cfg-faiz").value = cfg.kredi_faiz || 0.05;
+            document.getElementById("cfg-ceza").value = cfg.gecikme_cezasi || 50.0;
+
+            let epinAdminHtml = "";
+            const epinler = data.epin_urunler || {};
+            for (let id in epinler) {
+                let p = epinler[id];
+                epinAdminHtml += `<div style="background:#151525; padding:10px; margin-bottom:5px; border-radius:6px; font-size:0.85rem;">
+                    <b>${p.baslik}</b> (${p.fiyat} TL) - Stok: <b>${(p.stok_kodlar||[]).length} Adet</b>
+                    <button onclick="deleteEpinProduct('${p.id}')" style="background:var(--danger-color); padding:4px 8px; font-size:0.75rem; width:auto; float:right;">Sil</button>
+                </div>`;
+            }
+            document.getElementById("admin-epin-list").innerHTML = epinAdminHtml || "Henüz eklenmiş e-pin ürünü yok.";
+
+            let selectHtml = "";
+            for (let email in data.users) {
+                let hTur = data.users[email].hesap_turu === "is_hesabi" ? "💼 İş" : "👤 Bireysel";
+                selectHtml += `<option value="${email}">[${hTur}] ${data.users[email].ad_soyad} (${email})</option>`;
+            }
+            document.getElementById("admin-user-select").innerHTML = selectHtml;
+
             let verifyHtml = "";
             for (let email in data.dogrulama_talepleri) {
                 let req = data.dogrulama_talepleri[email];
                 verifyHtml += `<div style="background:#151525; padding:10px; margin-bottom:10px; border-radius:6px;">
                     <b>${req.ad_soyad}</b> (${email})<br>
-                    <img src="${req.selfie}" style="width:100%; max-width:250px; border-radius:6px; margin:5px 0;">
+                    <img src="${req.selfie}" style="width:100%; max-width:200px; border-radius:6px; margin:5px 0;">
                     <button onclick="verifyUser('${email}', 'onay')" style="background:var(--success-color);">Hesabı Doğrula</button>
                     <button onclick="verifyUser('${email}', 'red')" style="background:var(--danger-color); margin-top:3px;">Reddet</button>
                 </div>`;
             }
             document.getElementById("admin-verify-requests").innerHTML = verifyHtml || "Bekleyen yüz doğrulaması yok.";
 
-            // Onay Bekleyen İşlemler
             let reqHtml = "";
             for (let id in data.bekleyen_talepler) {
                 let t = data.bekleyen_talepler[id];
                 reqHtml += `<div style="background:#151525; padding:10px; margin-bottom:5px; border-radius:6px;">
                     <b>${t.tur.toUpperCase()}</b> - ${t.user_id} - ${t.tutar || t.toplam} TL 
+                    ${t.komisyon !== undefined ? `(Komisyon: ${t.komisyon} TL)` : ''}
+                    ${t.hafta ? `(${t.hafta} Hafta)` : ''}
                     <button onclick="approveReq('${id}', 'onay')" style="width:auto; padding:5px 10px; background:var(--success-color);">Onayla</button>
                     <button onclick="approveReq('${id}', 'red')" style="width:auto; padding:5px 10px; background:var(--danger-color);">Reddet</button>
                 </div>`;
             }
             document.getElementById("admin-requests").innerHTML = reqHtml || "Bekleyen talep yok.";
 
-            // Tüm Kullanıcılar
             let userHtml = "";
             for (let email in data.users) {
                 let u = data.users[email];
+                let typeBadge = u.hesap_turu === "is_hesabi" ? "<span class='badge badge-biz'>💼 İş Hesabı (%0)</span>" : "<span class='badge' style='background:#444;'>👤 Bireysel</span>";
                 userHtml += `<div style="background:#151525; padding:10px; margin-bottom:5px; border-radius:6px; font-size:0.85rem;">
-                    <b>${u.ad_soyad}</b> (${email}) <span style="color:${u.dogrulandi ? 'var(--success-color)':'var(--warning-color)'}">${u.dogrulandi ? '[DOĞRULANMIŞ]':'[KISITLI]'}</span><br>
-                    Bakiye: ${u.bakiye} TL | IBAN: ${u.iban}
+                    <b>${u.ad_soyad}</b> (${email}) ${typeBadge}<br>
+                    Bakiye: <b>${u.bakiye} TL</b> | Aktif Kredi: <b>${(u.krediler||[]).length}</b> | E-Pin: <b>${(u.satinalinan_epinler||[]).length}</b>
                 </div>`;
             }
             document.getElementById("admin-users-list").innerHTML = userHtml;
         }
+    }
+
+    async function addEpinProduct() {
+        const baslik = document.getElementById("admin-epin-title").value;
+        const fiyat = document.getElementById("admin-epin-price").value;
+        const kodlar = document.getElementById("admin-epin-codes").value;
+
+        const res = await fetch('/api/admin/add-epin', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({baslik: baslik, fiyat: fiyat, kodlar: kodlar})
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) {
+            document.getElementById("admin-epin-title").value = "";
+            document.getElementById("admin-epin-price").value = "";
+            document.getElementById("admin-epin-codes").value = "";
+            loadAdminData();
+        }
+    }
+
+    async function deleteEpinProduct(id) {
+        if (!confirm("Ürünü silmek istediğinize emin misiniz?")) return;
+        const res = await fetch('/api/admin/delete-epin', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({urun_id: id})
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) loadAdminData();
+    }
+
+    async function adminUserAction(act) {
+        const email = document.getElementById("admin-user-select").value;
+        const amount = document.getElementById("admin-amount-input").value;
+
+        const res = await fetch('/api/admin/edit-user', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email: email, action: act, amount: amount})
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (res.ok) loadAdminData();
+    }
+
+    async function saveAdminSettings() {
+        const payload = {
+            komisyon_cekme: document.getElementById("cfg-cekme").value,
+            komisyon_odeme: document.getElementById("cfg-odeme").value,
+            komisyon_havale: document.getElementById("cfg-havale").value,
+            kredi_faiz: document.getElementById("cfg-faiz").value,
+            gecikme_cezasi: document.getElementById("cfg-ceza").value
+        };
+
+        const res = await fetch('/api/admin/update-settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        alert(data.message);
     }
 
     async function verifyUser(email, act) {
