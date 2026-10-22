@@ -36,8 +36,8 @@ def load_db():
                     "kredi_notu": 2000,
                     "durum": "aktif",
                     "dogrulandi": True,
+                    "is_hesabi": False,
                     "is_admin": True,
-                    "hesap_turu": "is_hesabi",
                     "selfie": None,
                     "krediler": [],
                     "satinalinan_epinler": []
@@ -46,6 +46,7 @@ def load_db():
             "kasa": 0.0,
             "bekleyen_talepler": {},
             "dogrulama_talepleri": {},
+            "is_hesabi_talepleri": {},
             "dekontlar": [],
             "epin_urunler": {},
             "ayarlar": {
@@ -71,8 +72,8 @@ def load_db():
                 "kredi_notu": 2000,
                 "durum": "aktif",
                 "dogrulandi": True,
+                "is_hesabi": False,
                 "is_admin": True,
-                "hesap_turu": "is_hesabi",
                 "selfie": None,
                 "krediler": [],
                 "satinalinan_epinler": []
@@ -80,8 +81,9 @@ def load_db():
         for u in db["users"].values():
             if "krediler" not in u: u["krediler"] = []
             if "satinalinan_epinler" not in u: u["satinalinan_epinler"] = []
-            if "hesap_turu" not in u: u["hesap_turu"] = "bireysel"
+            if "is_hesabi" not in u: u["is_hesabi"] = False
         if "dogrulama_talepleri" not in db: db["dogrulama_talepleri"] = {}
+        if "is_hesabi_talepleri" not in db: db["is_hesabi_talepleri"] = {}
         if "dekontlar" not in db: db["dekontlar"] = []
         if "epin_urunler" not in db: db["epin_urunler"] = {}
         return db
@@ -222,8 +224,8 @@ def register():
         "kredi_notu": 1000,
         "durum": "aktif",
         "dogrulandi": False,
+        "is_hesabi": False,
         "is_admin": False,
-        "hesap_turu": "bireysel",
         "selfie": None,
         "krediler": [],
         "satinalinan_epinler": []
@@ -249,6 +251,7 @@ def get_user_data():
     if not user: return jsonify({"status": "error"}), 404
 
     user_dekontlar = [d for d in db.get("dekontlar", []) if d.get("user_email") == email]
+    is_hesabi_talep = db.get("is_hesabi_talepleri", {}).get(email, None)
 
     return jsonify({
         "status": "success", 
@@ -257,7 +260,8 @@ def get_user_data():
         "dekontlar": user_dekontlar,
         "krediler": user.get("krediler", []),
         "satinalinan_epinler": user.get("satinalinan_epinler", []),
-        "epin_urunler": db.get("epin_urunler", {})
+        "epin_urunler": db.get("epin_urunler", {}),
+        "is_hesabi_talep_var": bool(is_hesabi_talep)
     })
 
 @app.route('/api/user/upload-selfie', methods=['POST'])
@@ -281,8 +285,31 @@ def upload_selfie():
     auto_backup_discord()
     return jsonify({"status": "success", "message": "144p Selfie kaydedildi ve admin onayına gönderildi!"})
 
-# --- E-PIN MARKETİ İŞLEMLERİ (SANAL KART DOĞRULAMALI) ---
+# --- İŞ HESABI BAŞVURUSU ---
+@app.route('/api/user/request-business', methods=['POST'])
+def request_business_account():
+    email = session.get('user_email')
+    if not email: return jsonify({"status": "unauthorized"}), 401
 
+    db = load_db()
+    user = db["users"].get(email)
+
+    if not user.get("dogrulandi"):
+        return jsonify({"status": "error", "message": "❌ Öncelikli Şart: İş hesabına başvurmak için hesabınızın önce 144p Selfie ile doğrulanmış olması gerekir!"}), 403
+
+    if user.get("is_hesabi"):
+        return jsonify({"status": "error", "message": "Zaten bir İş Hesabına sahipsiniz."}), 400
+
+    db["is_hesabi_talepleri"][email] = {
+        "email": email,
+        "ad_soyad": user["ad_soyad"],
+        "tarih": datetime.now().strftime("%d/%m/%Y %H:%M")
+    }
+    save_db(db)
+    auto_backup_discord()
+    return jsonify({"status": "success", "message": "💼 İş Hesabı talebiniz admin onayına gönderildi!"})
+
+# --- E-PIN MARKETİ İŞLEMLERİ ---
 @app.route('/api/market/buy-epin', methods=['POST'])
 def buy_epin():
     email = session.get('user_email')
@@ -323,7 +350,6 @@ def buy_epin():
         "tarih": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     }
     user["satinalinan_epinler"].insert(0, epin_kayit)
-
     add_dekont(db, email, "EPIN_SATIN_ALIM", fiyat, f"E-Pin: {urun['baslik']} ({satilan_kod})")
 
     save_db(db)
@@ -335,8 +361,7 @@ def buy_epin():
         "kod": satilan_kod
     })
 
-# --- KREDİ BAŞVURU VE ÖDEME İŞLEMLERİ ---
-
+# --- KREDİ İŞLEMLERİ ---
 @app.route('/api/action/kredi-cek', methods=['POST'])
 def action_kredi_cek():
     email = session.get('user_email')
@@ -473,17 +498,17 @@ def action_para_cek():
     db = load_db()
     hesap = db["users"].get(email)
 
-    # İŞ HESABI İÇİN %0 ÇEKİM KOMİSYONU KONTROLÜ
-    if hesap.get("hesap_turu") == "is_hesabi":
-        komisyon_orani = 0.0
+    # İŞ HESABI STATÜSÜ KONTROLÜ: İş hesapları 0 komisyon ile para çeker!
+    if hesap.get("is_hesabi"):
+        komisyon = 0.0
     else:
         komisyon_orani = db["ayarlar"].get("komisyon_cekme", 0.10)
+        komisyon = round(tutar_val * komisyon_orani, 2)
 
-    komisyon = round(tutar_val * komisyon_orani, 2)
     toplam_kesinti = round(tutar_val + komisyon, 2)
 
     if hesap["bakiye"] < toplam_kesinti:
-        return jsonify({"status": "error", "message": f"Bakiye yetersiz! Toplam Çekim: {toplam_kesinti} TL (Komisyon: {komisyon} TL)"}), 400
+        return jsonify({"status": "error", "message": f"Bakiye yetersiz! Toplam Çekim Tutarı: {toplam_kesinti} TL"}), 400
 
     req_id = generate_req_id()
     db["bekleyen_talepler"][req_id] = {
@@ -492,7 +517,7 @@ def action_para_cek():
     save_db(db)
     auto_backup_discord()
     
-    msg_extra = " (İş Hesabı - %0 Komisyon)" if komisyon_orani == 0.0 else f" (%{int(komisyon_orani*100)} Komisyon)"
+    msg_extra = " (💼 İş Hesabı Avantajı: %0 Komisyon)" if hesap.get("is_hesabi") else f" (%{int(db['ayarlar'].get('komisyon_cekme', 0.10)*100)} Komisyon)"
     return jsonify({"status": "success", "message": f"Para çekme talebiniz oluşturuldu{msg_extra}. Admin onayı bekleniyor."})
 
 @app.route('/api/action/odeme', methods=['POST'])
@@ -538,7 +563,7 @@ def action_havale():
     if not gonderen.get("dogrulandi") and tutar_val > 500.0:
         return jsonify({"status": "error", "message": "❌ Kısıtlı Hesap! Maks 500 TL havale yapabilirsiniz."}), 403
 
-    alici_email = next((uid for uid, udata in db["users"].items() if udata.get("iban") == hedef_iban), None)
+    alici_email = next((uid for uid, udata in db["users"].items() if udata.get("iban") == hedon_iban if 'hedef_iban' in locals() else udata.get("iban") == hedef_iban), None)
     if not alici_email: return jsonify({"status": "error", "message": "Alıcı IBAN bulunamadı."}), 400
     if alici_email == email: return jsonify({"status": "error", "message": "Kendinize havale yapamazsınız."}), 400
 
@@ -571,10 +596,30 @@ def get_admin_users():
         "users": db["users"],
         "bekleyen_talepler": db.get("bekleyen_talepler", {}),
         "dogrulama_talepleri": db.get("dogrulama_talepleri", {}),
+        "is_hesabi_talepleri": db.get("is_hesabi_talepleri", {}),
         "epin_urunler": db.get("epin_urunler", {}),
         "ayarlar": db.get("ayarlar", {}),
         "kasa": db.get("kasa", 0)
     })
+
+@app.route('/api/admin/approve-business', methods=['POST'])
+def admin_approve_business():
+    email = session.get('user_email')
+    db = load_db()
+    if not email or not db["users"].get(email, {}).get("is_admin"): return jsonify({"status": "unauthorized"}), 403
+
+    target_email = request.json.get("email")
+    action = request.json.get("action")
+
+    if target_email in db["users"]:
+        if action == "onay":
+            db["users"][target_email]["is_hesabi"] = True
+        if target_email in db.get("is_hesabi_talepleri", {}):
+            del db["is_hesabi_talepleri"][target_email]
+
+    save_db(db)
+    auto_backup_discord()
+    return jsonify({"status": "success", "message": "İş Hesabı talebi güncellendi."})
 
 @app.route('/api/admin/add-epin', methods=['POST'])
 def admin_add_epin():
@@ -647,9 +692,9 @@ def admin_edit_user():
     elif action == "aktif_et":
         u["durum"] = "aktif"
     elif action == "is_hesabi_yap":
-        u["hesap_turu"] = "is_hesabi"
-    elif action == "bireysel_yap":
-        u["hesap_turu"] = "bireysel"
+        u["is_hesabi"] = True
+    elif action == "is_hesabi_kaldir":
+        u["is_hesabi"] = False
 
     save_db(db)
     auto_backup_discord()
