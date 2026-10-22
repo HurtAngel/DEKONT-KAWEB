@@ -64,12 +64,12 @@
 <body>
 
 <div class="app-container">
-    <!-- GİRİŞ & KAYIT EKRANI -->
+    <!-- GİRİŞ & KAYIT -->
     <div id="auth-box" class="card">
         <h2>🏦 DEKONTİKA Platformu</h2>
         
         <div id="login-form">
-            <input type="text" id="login-email" placeholder="E-Posta (isim@mail.com) veya 'Admin'">
+            <input type="text" id="login-email" placeholder="E-Posta veya 'admin'">
             <input type="password" id="login-pass" placeholder="Parola">
             <button onclick="login()">Giriş Yap</button>
             <p style="text-align:center; font-size:0.85rem; color:var(--text-muted); cursor:pointer;" onclick="toggleAuth('register')">Hesabın yok mu? Kayıt Ol</p>
@@ -77,9 +77,9 @@
 
         <div id="register-form" class="hidden">
             <input type="text" id="reg-name" placeholder="Ad Soyad">
-            <input type="email" id="reg-email" placeholder="Geçerli E-Posta Adresi">
+            <input type="email" id="reg-email" placeholder="Geçerli E-Posta">
             <input type="password" id="reg-pass" placeholder="Şifre Oluştur">
-            <button onclick="register()">Anında Kayıt Ol (Kodsuz)</button>
+            <button onclick="register()">Kayıt Ol</button>
             <p style="text-align:center; font-size:0.85rem; color:var(--text-muted); cursor:pointer;" onclick="toggleAuth('login')">Zaten hesabın var mı? Giriş Yap</p>
         </div>
     </div>
@@ -106,11 +106,11 @@
                 </div>
             </div>
 
-            <!-- DOĞRULAMA KUTUSU (144p Selfie) -->
+            <!-- 144p Selfie Yüz Doğrulama Kutusu -->
             <div id="verify-warning-box" class="card" style="border:1px solid var(--warning-color);">
                 <h3 style="color:var(--warning-color); font-size:1rem;">⚠️ Kısıtlı Hesap</h3>
                 <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">
-                    Havale limitiniz maks 500 TL'dir. Yüz doğrulaması yaparak limitleri kaldırabilirsiniz.
+                    Limitlerinizi kaldırmak için 144p selfie doğrulaması yapmalısınız.
                 </p>
                 <button onclick="startCamera()" style="background:var(--warning-color); color:black;">📷 Yüz Doğrulama (144p Selfie)</button>
                 
@@ -121,13 +121,13 @@
                 </div>
             </div>
 
-            <!-- İŞ HESABI (SATICI) BAŞVURU KUTUSU (Doğrulanmış hesaplar için) -->
+            <!-- İş Hesabı Yükseltme Kutusu -->
             <div id="business-request-box" class="card hidden" style="border:1px solid var(--business-color);">
                 <h3 style="color:var(--business-color); font-size:1rem;">💼 İş Hesabına Yükselt</h3>
                 <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">
-                    E-Pin satıcısı mısınız? İş Hesabı statüsüne geçerek kazandığınız paraları <b>%0 Komisyon (Sıfır Kesinti)</b> ile çekebilirsiniz!
+                    İş Hesabı statüsü alarak paralarınızı <b>%0 Komisyon (Sıfır Kesinti)</b> ile çekin!
                 </p>
-                <button id="btn-request-biz" onclick="requestBusinessAccount()" style="background:var(--business-color); color:black;">💼 İş Hesabı İzni İste (Admin Onaylı)</button>
+                <button id="btn-request-biz" onclick="requestBusinessAccount()" style="background:var(--business-color); color:black;">💼 İş Hesabı İzni İste</button>
             </div>
 
             <div class="card">
@@ -135,15 +135,12 @@
                 <h1 id="user-balance" style="color:var(--success-color); margin-bottom:8px;">0.00 ₺</h1>
                 <p style="font-size:0.8rem; color:var(--text-muted);">IBAN: <b id="user-iban" style="color:white;">TR000...</b></p>
                 <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Kredi Notu: <b id="user-score">1000</b></p>
-                
-                <button onclick="toggleQRModal()" style="background:#2a2a40; border:1px solid #3d3d5c; margin-top:10px; font-size:0.85rem;">📱 IBAN QR Kodumu Göster</button>
+                <button onclick="toggleQRModal()" style="background:#2a2a40; border:1px solid #3d3d5c; margin-top:10px; font-size:0.85rem;">📱 IBAN QR Kodu Göster</button>
             </div>
 
             <div id="qr-box" class="card hidden">
                 <h3>📱 QR Kod ile Para Alma</h3>
-                <div class="qr-box">
-                    <canvas id="iban-qr"></canvas>
-                </div>
+                <div class="qr-box"><canvas id="iban-qr"></canvas></div>
                 <button onclick="toggleQRModal()" style="background:#444; margin-top:8px;">Kapat</button>
             </div>
 
@@ -176,16 +173,14 @@
         <div id="tab-content-market" class="hidden">
             <div class="card">
                 <h2>🛒 E-Pin Marketi</h2>
-                <p style="font-size:0.8rem; color:var(--text-muted);">Sanal kart bilgilerinizi girerek anında stoktan e-pin satın alabilirsiniz.</p>
+                <p style="font-size:0.8rem; color:var(--text-muted);">Sanal kart bilgilerinizi girerek anında e-pin satın alabilirsiniz.</p>
             </div>
-
             <div class="card">
                 <h3>📦 Mevcut E-Pin Ürünleri</h3>
                 <div id="market-urunler-list">Yükleniyor...</div>
             </div>
-
             <div class="card" style="border: 1px solid var(--success-color);">
-                <h3>🎁 Satın Aldığım E-Pinler & Kodlarım</h3>
+                <h3>🎁 Satın Aldığım E-Pinler</h3>
                 <div id="user-epinler-list">Henüz satın aldığınız e-pin bulunmuyor.</div>
             </div>
         </div>
@@ -193,12 +188,9 @@
         <div id="epin-buy-modal" class="card hidden" style="border: 1px solid var(--accent-color);">
             <h3 id="modal-epin-title">E-Pin Satın Al</h3>
             <p id="modal-epin-price" style="color:var(--success-color); font-weight:bold; margin-bottom:10px;"></p>
-            
-            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">Ödeme için sanal kart bilgilerinizi doğrulayın (İsim gerekmez):</p>
             <input type="text" id="buy-card-no" placeholder="Kart Numarası (4444 **** **** ****)">
             <input type="text" id="buy-card-skt" placeholder="SKT (12/28)">
             <input type="text" id="buy-card-cvv" placeholder="CVV (123)">
-
             <button onclick="confirmBuyEpin()" style="background:var(--success-color);">Ödemeyi Onayla & Kodu Al</button>
             <button onclick="closeEpinModal()" style="background:#444; margin-top:5px;">İptal</button>
         </div>
@@ -206,7 +198,7 @@
         <button onclick="logout()" style="background:#333; margin-top:10px;">Çıkış Yap</button>
     </div>
 
-    <!-- YÖNETİCİ (ADMIN) PANELİ -->
+    <!-- ADMIN PANELİ -->
     <div id="admin-panel" class="hidden">
         <div class="card" style="border: 1px solid var(--accent-color);">
             <h2>👑 Admin Kontrol Paneli</h2>
@@ -214,7 +206,7 @@
         </div>
 
         <div class="card" style="border: 1px solid var(--business-color);">
-            <h3>💼 İş Hesabı (Satıcı) Başvuruları</h3>
+            <h3>💼 İş Hesabı Başvuruları</h3>
             <div id="admin-business-requests">Yükleniyor...</div>
         </div>
 
@@ -222,7 +214,7 @@
             <h3>🛒 E-Pin Ürün & Stok Ekle</h3>
             <input type="text" id="admin-epin-title" placeholder="Ürün Başlığı (Örn: Valorant 475 VP)">
             <input type="number" id="admin-epin-price" placeholder="Fiyat (TL)">
-            <textarea id="admin-epin-codes" rows="3" placeholder="E-Pin Kodları (Her satıra 1 kod gelecek şekilde yapıştırın)"></textarea>
+            <textarea id="admin-epin-codes" rows="3" placeholder="E-Pin Kodları (Her satıra 1 kod)"></textarea>
             <button onclick="addEpinProduct()" style="background:var(--success-color);">Ürün & Stok Yükle</button>
         </div>
 
@@ -252,19 +244,14 @@
             <h3>⚙️ Komisyon & Ceza Ayarları</h3>
             <label style="font-size:0.8rem;">Bireysel Çekim Komisyonu (0.10 = %10):</label>
             <input type="number" step="0.01" id="cfg-cekme">
-            
             <label style="font-size:0.8rem;">Ödeme Komisyonu (0.60 = %60):</label>
             <input type="number" step="0.01" id="cfg-odeme">
-            
             <label style="font-size:0.8rem;">Havale Komisyonu (0.05 = %5):</label>
             <input type="number" step="0.01" id="cfg-havale">
-
             <label style="font-size:0.8rem;">Kredi Temel Faiz Oranı (0.05 = %5):</label>
             <input type="number" step="0.01" id="cfg-faiz">
-
             <label style="font-size:0.8rem;">Haftalık Gecikme Cezası (TL):</label>
             <input type="number" id="cfg-ceza">
-
             <button onclick="saveAdminSettings()" style="background:var(--accent-color);">Ayarları Kaydet</button>
         </div>
 
@@ -278,12 +265,17 @@
             <div id="admin-requests">Talepler yükleniyor...</div>
         </div>
 
+        <!-- JSON YEDEK İNDİRME VE VERİTABANI YÜKLEME -->
         <div class="card" style="border: 1px dashed var(--accent-color);">
-            <h3>📂 Veritabanı Yükle / Geri Yükle</h3>
+            <h3>📂 Veritabanı Yedeği & Geri Yükleme</h3>
+            <button onclick="downloadBackup()" style="background:var(--accent-color); margin-bottom:12px;">📥 JSON Veritabanı Yedeğini İndir</button>
+            
+            <label style="font-size:0.8rem; color:var(--text-muted);">JSON Dosyasından Veritabanı Yükle:</label>
             <input type="file" id="json-file-input" accept=".json">
-            <button onclick="restoreDB()" style="background:var(--success-color);">Veritabanını Yükle</button>
+            <button onclick="restoreDB()" style="background:var(--success-color);">Veritabanını Geri Yükle</button>
         </div>
 
+        <!-- MATPLOTLIB GRAFİĞİ -->
         <div class="card">
             <h3>📊 Kasa Dağılım Grafiği</h3>
             <img src="/api/admin/grafik" style="width:100%; border-radius:8px;" alt="Kasa Grafik">
@@ -299,15 +291,33 @@
 </div>
 
 <script>
+    let csrfToken = "";
     let currentUser = null;
     let videoStream = null;
     let selectedEpinId = null;
 
-    window.onload = () => {
-        const savedEmail = localStorage.getItem("dekontika_email");
-        if (savedEmail) document.getElementById("login-email").value = savedEmail;
+    window.onload = async () => {
+        await fetchSession();
         checkSession();
     };
+
+    async function fetchSession() {
+        const res = await fetch('/api/session');
+        const data = await res.json();
+        csrfToken = data.csrf;
+    }
+
+    async function apiPost(url, bodyData) {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify(bodyData)
+        });
+        return res;
+    }
 
     function switchTab(tab) {
         document.getElementById("tab-content-banka").classList.toggle("hidden", tab !== 'banka');
@@ -326,15 +336,11 @@
         const email = document.getElementById("reg-email").value;
         const pass = document.getElementById("reg-pass").value;
 
-        const res = await fetch('/api/register', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ad_soyad: name, email: email, password: pass})
-        });
+        const res = await apiPost('/api/register', {ad_soyad: name, email: email, password: pass});
         const data = await res.json();
         alert(data.message);
         if (res.ok) {
-            localStorage.setItem("dekontika_email", email);
+            csrfToken = data.csrf;
             checkSession();
         }
     }
@@ -343,14 +349,10 @@
         const email = document.getElementById("login-email").value;
         const pass = document.getElementById("login-pass").value;
 
-        const res = await fetch('/api/login', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email: email, password: pass})
-        });
+        const res = await apiPost('/api/login', {email: email, password: pass});
         const data = await res.json();
         if (res.ok) {
-            localStorage.setItem("dekontika_email", email);
+            csrfToken = data.csrf;
             checkSession();
         } else alert(data.message);
     }
@@ -408,26 +410,19 @@
             businessBox.classList.add("hidden");
         }
 
-        new QRious({
-            element: document.getElementById('iban-qr'),
-            value: u.iban,
-            size: 180
-        });
+        new QRious({ element: document.getElementById('iban-qr'), value: u.iban, size: 180 });
 
         let marketHtml = "";
-        const epinler = data.epin_urunler || {};
-        for (let id in epinler) {
-            let prod = epinler[id];
-            let stokSayisi = (prod.stok_kodlar || []).length;
+        (data.market || []).forEach(prod => {
             marketHtml += `
             <div class="market-card">
                 <div>
                     <div class="market-card-title">${prod.baslik}</div>
-                    <div class="market-card-sub">Fiyat: <b style="color:var(--success-color);">${prod.fiyat} TL</b> | Stok: ${stokSayisi} Adet</div>
+                    <div class="market-card-sub">Fiyat: <b style="color:var(--success-color);">${prod.fiyat} TL</b> | Stok: ${prod.stok} Adet</div>
                 </div>
                 <button onclick="openEpinModal('${prod.id}', '${prod.baslik}', ${prod.fiyat})">Satın Al</button>
             </div>`;
-        }
+        });
         document.getElementById("market-urunler-list").innerHTML = marketHtml || "Şu an stokta e-pin ürünü bulunmuyor.";
 
         let alinanlarHtml = "";
@@ -450,9 +445,8 @@
                     <span>${k.kalan_borc} TL</span>
                 </div>
                 <div style="font-size:0.8rem; color:var(--text-muted); line-height:1.4;">
-                    Çekilen: <b>${k.ana_para} TL</b> | Toplam Geri Ödeme: <b>${k.toplam_borc} TL</b><br>
-                    Vade: <b>${k.kalan_hafta} / ${k.toplam_hafta} Hafta</b> | Faiz: <b>%${k.faiz_orani}</b><br>
-                    Haftalık Taksit: <b style="color:white;">${k.haftalik_taksit} TL</b>
+                    Çekilen: <b>${k.ana_para} TL</b> | Toplam: <b>${k.toplam_borc} TL</b><br>
+                    Vade: <b>${k.kalan_hafta} / ${k.toplam_hafta} Hafta</b> | Taksit: <b style="color:white;">${k.haftalik_taksit} TL</b>
                 </div>
                 <div class="kredi-btn-group">
                     <button onclick="payLoanWeekly('${k.kredi_id}')" style="background:var(--accent-color);">Haftalığı Öde (${k.haftalik_taksit} ₺)</button>
@@ -470,11 +464,11 @@
                 <small style="color:var(--text-muted);">${d.aciklama}</small>
             </div>`;
         });
-        document.getElementById("user-dekontlar-list").innerHTML = dekontHtml || "Henüz onaylanmış dekontunuz yok.";
+        document.getElementById("user-dekontlar-list").innerHTML = dekontHtml || "Henüz dekont bulunmuyor.";
     }
 
     async function requestBusinessAccount() {
-        const res = await fetch('/api/user/request-business', { method: 'POST' });
+        const res = await apiPost('/api/user/request-business', {});
         const data = await res.json();
         alert(data.message);
         if (res.ok) location.reload();
@@ -499,17 +493,11 @@
         const skt = document.getElementById("buy-card-skt").value;
         const cvv = document.getElementById("buy-card-cvv").value;
 
-        if (!cardNo || !skt || !cvv) return alert("Lütfen tüm sanal kart bilgilerini doldurun.");
-
-        const res = await fetch('/api/market/buy-epin', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                urun_id: selectedEpinId,
-                kart_no: cardNo,
-                skt: skt,
-                cvv: cvv
-            })
+        const res = await apiPost('/api/market/buy-epin', {
+            urun_id: selectedEpinId,
+            kart_no: cardNo,
+            skt: skt,
+            cvv: cvv
         });
         const data = await res.json();
         alert(data.message);
@@ -517,23 +505,15 @@
     }
 
     async function payLoanWeekly(krediId) {
-        const res = await fetch('/api/action/kredi-ode-haftalik', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({kredi_id: krediId})
-        });
+        const res = await apiPost('/api/action/kredi-ode-haftalik', {kredi_id: krediId});
         const data = await res.json();
         alert(data.message);
         if (res.ok) location.reload();
     }
 
     async function payLoanFull(krediId) {
-        if (!confirm("Kredinin kalan borcunun tamamını ödemek istediğinizden emin misiniz?")) return;
-        const res = await fetch('/api/action/kredi-ode-tamami', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({kredi_id: krediId})
-        });
+        if (!confirm("Kredinin tamamını ödemek istediğinize emin misiniz?")) return;
+        const res = await apiPost('/api/action/kredi-ode-tamami', {kredi_id: krediId});
         const data = await res.json();
         alert(data.message);
         if (res.ok) location.reload();
@@ -548,9 +528,7 @@
         try {
             videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 256, height: 144 } });
             document.getElementById("webcam").srcObject = videoStream;
-        } catch (err) {
-            alert("Kamera erişimi reddedildi!");
-        }
+        } catch (err) { alert("Kamera erişimi reddedildi!"); }
     }
 
     async function takeSnapshot() {
@@ -562,11 +540,7 @@
         const base64Img = canvas.toDataURL("image/jpeg", 0.5);
         if (videoStream) videoStream.getTracks().forEach(track => track.stop());
 
-        const res = await fetch('/api/user/upload-selfie', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({image: base64Img})
-        });
+        const res = await apiPost('/api/user/upload-selfie', {image: base64Img});
         const data = await res.json();
         alert(data.message);
         if (res.ok) location.reload();
@@ -580,65 +554,30 @@
 
         if (type === 'para-yatir') {
             document.getElementById("form-title").innerText = "💵 Para Yatırma Talebi";
-            inputs.innerHTML = `
-                <input type="number" id="act-tutar" placeholder="Yatırılacak Tutar (TL)">
-                <input type="text" id="act-kanit" placeholder="Açıklama / Dekont Notu">
-            `;
-            submitBtn.onclick = () => submitAction('/api/action/para-yatir', {
-                tutar: document.getElementById("act-tutar").value,
-                kanit: document.getElementById("act-kanit").value
-            });
+            inputs.innerHTML = `<input type="number" id="act-tutar" placeholder="Yatırılacak Tutar (TL)"><input type="text" id="act-kanit" placeholder="Açıklama / Dekont Notu">`;
+            submitBtn.onclick = () => submitAction('/api/action/para-yatir', {tutar: document.getElementById("act-tutar").value, kanit: document.getElementById("act-kanit").value});
         } else if (type === 'para-cek') {
             const isBiz = currentUser && currentUser.is_hesabi;
-            const titleMsg = isBiz ? "Atm Para Çek (💼 İş Hesabı: %0 Komisyon)" : "Atm Para Çek (%10 Komisyonlu)";
-            document.getElementById("form-title").innerText = titleMsg;
+            document.getElementById("form-title").innerText = isBiz ? "Atm Para Çek (💼 İş Hesabı: %0 Komisyon)" : "Atm Para Çek (%10 Komisyonlu)";
             inputs.innerHTML = `<input type="number" id="act-tutar" placeholder="Çekilecek Tutar (TL)">`;
             submitBtn.onclick = () => submitAction('/api/action/para-cek', {tutar: document.getElementById("act-tutar").value});
         } else if (type === 'odeme') {
             document.getElementById("form-title").innerText = "🛍️ Kredi Kartı ile Ödeme";
-            inputs.innerHTML = `
-                <input type="number" id="act-fiyat" placeholder="Ürün Fiyatı (TL)">
-                <input type="text" id="act-desc" placeholder="Ürün Adı / Açıklama">
-            `;
-            submitBtn.onclick = () => submitAction('/api/action/odeme', {
-                fiyat: document.getElementById("act-fiyat").value,
-                aciklama: document.getElementById("act-desc").value
-            });
+            inputs.innerHTML = `<input type="number" id="act-fiyat" placeholder="Ürün Fiyatı (TL)"><input type="text" id="act-desc" placeholder="Açıklama">`;
+            submitBtn.onclick = () => submitAction('/api/action/odeme', {fiyat: document.getElementById("act-fiyat").value, aciklama: document.getElementById("act-desc").value});
         } else if (type === 'havale') {
             document.getElementById("form-title").innerText = "🔄 Para Transferi (Havale)";
-            inputs.innerHTML = `
-                <input type="text" id="act-iban" placeholder="Alıcı IBAN (TR...)">
-                <input type="number" id="act-tutar" placeholder="Tutar (TL)">
-            `;
-            submitBtn.onclick = () => submitAction('/api/action/havale', {
-                iban: document.getElementById("act-iban").value,
-                tutar: document.getElementById("act-tutar").value
-            });
+            inputs.innerHTML = `<input type="text" id="act-iban" placeholder="Alıcı IBAN (TR...)"><input type="number" id="act-tutar" placeholder="Tutar (TL)">`;
+            submitBtn.onclick = () => submitAction('/api/action/havale', {iban: document.getElementById("act-iban").value, tutar: document.getElementById("act-tutar").value});
         } else if (type === 'kredi') {
-            document.getElementById("form-title").innerText = "📑 Kredi Başvurusu (3-12 Hafta)";
-            inputs.innerHTML = `
-                <input type="number" id="act-tutar" placeholder="Çekilecek Tutar (TL)">
-                <label style="font-size:0.8rem; color:var(--text-muted);">Geri Ödeme Süresi (Hafta):</label>
-                <select id="act-hafta">
-                    <option value="3">3 Hafta (1x Faiz)</option>
-                    <option value="6">6 Hafta (2x Faiz)</option>
-                    <option value="9">9 Hafta (3x Faiz)</option>
-                    <option value="12">12 Hafta (4x Faiz)</option>
-                </select>
-            `;
-            submitBtn.onclick = () => submitAction('/api/action/kredi-cek', {
-                tutar: document.getElementById("act-tutar").value,
-                hafta: document.getElementById("act-hafta").value
-            });
+            document.getElementById("form-title").innerText = "📑 Kredi Başvurusu";
+            inputs.innerHTML = `<input type="number" id="act-tutar" placeholder="Çekilecek Tutar (TL)"><select id="act-hafta"><option value="3">3 Hafta</option><option value="6">6 Hafta</option><option value="9">9 Hafta</option><option value="12">12 Hafta</option></select>`;
+            submitBtn.onclick = () => submitAction('/api/action/kredi-cek', {tutar: document.getElementById("act-tutar").value, hafta: document.getElementById("act-hafta").value});
         }
     }
 
     async function submitAction(url, payload) {
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
-        });
+        const res = await apiPost(url, payload);
         const data = await res.json();
         alert(data.message);
         if (res.ok) location.reload();
@@ -664,7 +603,7 @@
                 let req = data.is_hesabi_talepleri[email];
                 bizReqHtml += `<div style="background:#151525; padding:10px; margin-bottom:5px; border-radius:6px; font-size:0.85rem;">
                     <b>${req.ad_soyad}</b> (${email}) - ${req.tarih}<br>
-                    <button onclick="approveBusiness('${email}', 'onay')" style="background:var(--business-color); color:black; padding:5px 10px; width:auto; font-size:0.8rem; margin-top:5px;">💼 İş Hesabını Onayla (%0 Komisyon)</button>
+                    <button onclick="approveBusiness('${email}', 'onay')" style="background:var(--business-color); color:black; padding:5px 10px; width:auto; font-size:0.8rem; margin-top:5px;">💼 İş Hesabını Onayla</button>
                     <button onclick="approveBusiness('${email}', 'red')" style="background:var(--danger-color); padding:5px 10px; width:auto; font-size:0.8rem; margin-top:5px;">Reddet</button>
                 </div>`;
             }
@@ -682,9 +621,7 @@
             document.getElementById("admin-epin-list").innerHTML = epinAdminHtml || "Henüz eklenmiş e-pin ürünü yok.";
 
             let selectHtml = "";
-            for (let email in data.users) {
-                selectHtml += `<option value="${email}">${data.users[email].ad_soyad} (${email})</option>`;
-            }
+            for (let email in data.users) { selectHtml += `<option value="${email}">${data.users[email].ad_soyad} (${email})</option>`; }
             document.getElementById("admin-user-select").innerHTML = selectHtml;
 
             let verifyHtml = "";
@@ -704,7 +641,6 @@
                 let t = data.bekleyen_talepler[id];
                 reqHtml += `<div style="background:#151525; padding:10px; margin-bottom:5px; border-radius:6px;">
                     <b>${t.tur.toUpperCase()}</b> - ${t.user_id} - ${t.tutar || t.toplam} TL 
-                    ${t.hafta ? `(${t.hafta} Hafta)` : ''}
                     <button onclick="approveReq('${id}', 'onay')" style="width:auto; padding:5px 10px; background:var(--success-color);">Onayla</button>
                     <button onclick="approveReq('${id}', 'red')" style="width:auto; padding:5px 10px; background:var(--danger-color);">Reddet</button>
                 </div>`;
@@ -717,7 +653,7 @@
                 let statuStr = u.is_hesabi ? "<b style='color:var(--business-color)'>[💼 İŞ HESABI]</b>" : (u.dogrulandi ? "<b style='color:var(--success-color)'>[🟢 BİREYSEL DOĞRULANMIŞ]</b>" : "<b style='color:var(--warning-color)'>[🟡 KISITLI]</b>");
                 userHtml += `<div style="background:#151525; padding:10px; margin-bottom:5px; border-radius:6px; font-size:0.85rem;">
                     <b>${u.ad_soyad}</b> (${email}) ${statuStr}<br>
-                    Bakiye: <b>${u.bakiye} TL</b> | Aktif Kredi: <b>${(u.krediler||[]).length}</b> | E-Pin: <b>${(u.satinalinan_epinler||[]).length}</b>
+                    Bakiye: <b>${u.bakiye} TL</b> | Aktif Kredi: <b>${(u.krediler||[]).length}</b>
                 </div>`;
             }
             document.getElementById("admin-users-list").innerHTML = userHtml;
@@ -725,11 +661,7 @@
     }
 
     async function approveBusiness(email, act) {
-        await fetch('/api/admin/approve-business', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email: email, action: act})
-        });
+        await apiPost('/api/admin/approve-business', {email: email, action: act});
         loadAdminData();
     }
 
@@ -738,28 +670,15 @@
         const fiyat = document.getElementById("admin-epin-price").value;
         const kodlar = document.getElementById("admin-epin-codes").value;
 
-        const res = await fetch('/api/admin/add-epin', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({baslik: baslik, fiyat: fiyat, kodlar: kodlar})
-        });
+        const res = await apiPost('/api/admin/add-epin', {baslik: baslik, fiyat: fiyat, kodlar: kodlar});
         const data = await res.json();
         alert(data.message);
-        if (res.ok) {
-            document.getElementById("admin-epin-title").value = "";
-            document.getElementById("admin-epin-price").value = "";
-            document.getElementById("admin-epin-codes").value = "";
-            loadAdminData();
-        }
+        if (res.ok) loadAdminData();
     }
 
     async function deleteEpinProduct(id) {
         if (!confirm("Ürünü silmek istediğinize emin misiniz?")) return;
-        const res = await fetch('/api/admin/delete-epin', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({urun_id: id})
-        });
+        const res = await apiPost('/api/admin/delete-epin', {urun_id: id});
         const data = await res.json();
         alert(data.message);
         if (res.ok) loadAdminData();
@@ -769,11 +688,7 @@
         const email = document.getElementById("admin-user-select").value;
         const amount = document.getElementById("admin-amount-input").value;
 
-        const res = await fetch('/api/admin/edit-user', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email: email, action: act, amount: amount})
-        });
+        const res = await apiPost('/api/admin/edit-user', {email: email, action: act, amount: amount});
         const data = await res.json();
         alert(data.message);
         if (res.ok) loadAdminData();
@@ -788,24 +703,22 @@
             gecikme_cezasi: document.getElementById("cfg-ceza").value
         };
 
-        const res = await fetch('/api/admin/update-settings', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
-        });
+        const res = await apiPost('/api/admin/update-settings', payload);
         const data = await res.json();
         alert(data.message);
     }
 
     async function verifyUser(email, act) {
-        await fetch('/api/admin/verify-user', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email: email, action: act})
-        });
+        await apiPost('/api/admin/verify-user', {email: email, action: act});
         loadAdminData();
     }
 
+    // JSON YEDEK İNDİRME
+    function downloadBackup() {
+        window.location.href = "/api/admin/backup";
+    }
+
+    // JSON VERİTABANI GERİ YÜKLEME
     async function restoreDB() {
         const fileInput = document.getElementById("json-file-input");
         if (!fileInput.files[0]) return alert("Lütfen yüklenecek JSON dosyasını seçin.");
@@ -813,23 +726,23 @@
         const formData = new FormData();
         formData.append("file", fileInput.files[0]);
 
-        const res = await fetch('/api/admin/restore-db', { method: 'POST', body: formData });
+        const res = await fetch('/api/admin/restore-db', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken },
+            body: formData
+        });
         const data = await res.json();
         alert(data.message);
         if (res.ok) location.reload();
     }
 
     async function approveReq(id, act) {
-        await fetch('/api/admin/approve-request', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({req_id: id, action: act})
-        });
+        await apiPost('/api/admin/approve-request', {req_id: id, action: act});
         loadAdminData();
     }
 
     async function logout() {
-        await fetch('/api/logout', {method: 'POST'});
+        await apiPost('/api/logout', {});
         location.reload();
     }
 </script>
