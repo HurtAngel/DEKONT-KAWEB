@@ -498,7 +498,6 @@ def action_para_cek():
     db = load_db()
     hesap = db["users"].get(email)
 
-    # İŞ HESABI STATÜSÜ KONTROLÜ: İş hesapları 0 komisyon ile para çeker!
     if hesap.get("is_hesabi"):
         komisyon = 0.0
     else:
@@ -563,7 +562,7 @@ def action_havale():
     if not gonderen.get("dogrulandi") and tutar_val > 500.0:
         return jsonify({"status": "error", "message": "❌ Kısıtlı Hesap! Maks 500 TL havale yapabilirsiniz."}), 403
 
-    alici_email = next((uid for uid, udata in db["users"].items() if udata.get("iban") == hedon_iban if 'hedef_iban' in locals() else udata.get("iban") == hedef_iban), None)
+    alici_email = next((uid for uid, udata in db["users"].items() if udata.get("iban") == hedef_iban), None)
     if not alici_email: return jsonify({"status": "error", "message": "Alıcı IBAN bulunamadı."}), 400
     if alici_email == email: return jsonify({"status": "error", "message": "Kendinize havale yapamazsınız."}), 400
 
