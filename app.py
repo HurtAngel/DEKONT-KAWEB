@@ -197,6 +197,7 @@ def new_user(db, ad_soyad, password, *, admin=False, bakiye=0.0):
         "dogrulandi": True if admin else False,
         "is_hesabi": False,
         "is_admin": admin,
+        "device_hash": None,  # YENİ EKLENEN: Web OS Cihaz Tanıma
         "selfie": None,
         "krediler": [],
         "satinalinan_epinler": [],
@@ -233,6 +234,7 @@ def normalize_db(db, create_admin=False):
         u.setdefault("dogrulandi", False)
         u.setdefault("is_hesabi", False)
         u.setdefault("is_admin", False)
+        u.setdefault("device_hash", None) # YENİ EKLENEN: Eski hesaplar bozulmasın
         u.setdefault("selfie", None)
         u.setdefault("krediler", [])
         u.setdefault("satinalinan_epinler", [])
@@ -398,6 +400,7 @@ def public_user(email, u):
         "dogrulandi": bool(u["dogrulandi"]),
         "is_hesabi": bool(u["is_hesabi"]),
         "is_admin": bool(u["is_admin"]),
+        "device_hash": u.get("device_hash"), # YENİ EKLENEN: Web OS Entegrasyonu
     }
 
 def seller_name(db, satici):
@@ -440,6 +443,10 @@ def pending_view(rid, t, db=None):
 @app.before_request
 def csrf_protect():
     if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.path.startswith("/api/"):
+        # YENİ EKLENEN: Web OS'den (Sunucu 2'den) gelen cihaz tabanlı API isteklerini CSRF muafiyeti
+        if request.path.startswith("/api/os/"): 
+            return
+            
         token = session.get("csrf")
         sent = request.headers.get("X-CSRF-Token", "")
         if not token or not hmac.compare_digest(token, sent):
@@ -1003,6 +1010,58 @@ def api_admin_grafik():
     plt.close()
 
     return Response(buffer.getvalue(), mimetype='image/png')
+
+# ---------------------------------------------------------------------------
+# YENİ EKLENEN: WEB OS (SUNUCU 2) ENTEGRASYON APİ'LERİ
+# ---------------------------------------------------------------------------
+@app.route("/api/os/link-device", methods=["POST"])
+def api_os_link_device():
+    # Kullanıcı Web OS üzerinde kartını girdiğinde cihaz donanımını bankaya kaydeder.
+    data = body()
+    kart_no = clean_card_number(data.get("kart_no"))
+    skt = str(data.get("skt", "")).strip()
+    cvv = str(data.get("cvv", "")).strip()
+    device_hash = str(data.get("device_hash", "")).strip()
+
+    if not kart_no or not skt or not cvv or not device_hash:
+        return jsonify(status="error", message="Eksik bilgi."), 400
+
+    with transaction() as db:
+        for email, u in db["users"].items():
+            if clean_card_number(u["kart_no"]) == kart_no and u["skt"].strip() == skt and u["cvv"].strip() == cvv:
+                u["device_hash"] = device_hash
+                return jsonify(status="success", message="Cihaz başarıyla bankaya bağlandı.", email=email)
+        return jsonify(status="error", message="Kart bilgileri geçersiz."), 401
+
+@app.route("/api/os/check-balance", methods=["POST"])
+def api_os_check_balance():
+    # Web OS'in kullanıcının bakiyesini anlık okumasını sağlar.
+    device_hash = str(body().get("device_hash", "")).strip()
+    db = load_db()
+    for email, u in db["users"].items():
+        if u.get("device_hash") == device_hash:
+            return jsonify(status="success", bakiye=u["bakiye"], ad_soyad=u["ad_soyad"])
+    return jsonify(status="error", message="Bu cihaza bağlı banka hesabı yok."), 404
+
+@app.route("/api/os/pay-daily", methods=["POST"])
+def api_os_pay_daily():
+    # Web OS günlük abonelik veya mağaza satın alımlarında bu rotadan para çeker.
+    data = body()
+    device_hash = str(data.get("device_hash", "")).strip()
+    tutar = parse_amount(data.get("tutar"))
+    aciklama = str(data.get("aciklama", "Web OS Abonelik / Servis Ödemesi")).strip()
+
+    with transaction() as db:
+        for email, u in db["users"].items():
+            if u.get("device_hash") == device_hash:
+                if u["bakiye"] >= tutar:
+                    u["bakiye"] = round(u["bakiye"] - tutar, 2)
+                    db["kasa"] = round(db["kasa"] + tutar, 2)
+                    add_dekont(db, email, "WEB_OS_ODEME", tutar, aciklama)
+                    return jsonify(status="success", message="Ödeme başarılı.", bakiye=u["bakiye"])
+                else:
+                    return jsonify(status="failed", message="Bakiye yetersiz.", bakiye=u["bakiye"])
+        return jsonify(status="error", message="Cihaz bankaya bağlı değil."), 404
 
 init_db()
 
