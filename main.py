@@ -275,7 +275,7 @@ async def process_gemini_reply(user_prompt: str, target_room: str):
                 clean_prompt = "Merhaba"
             
             response = gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.5-flash-lite",
                 contents=clean_prompt,
             )
             reply_text = response.text
