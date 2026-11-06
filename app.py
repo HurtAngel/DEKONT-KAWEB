@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 import requests
 from flask import Flask, Response, jsonify, render_template, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
+from pymongo import MongoClient
 
 # ---------------------------------------------------------------------------
 # YAPILANDIRMA
@@ -31,6 +32,7 @@ DB_FILE = os.getenv("DB_FILE", "bank_db.json")
 LOCK_FILE = DB_FILE + ".lock"
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 BACKUP_MIN_INTERVAL = int(os.getenv("BACKUP_MIN_INTERVAL", "300"))
+MONGO_URI = os.getenv("MONGO_URI")
 
 MAX_TUTAR = 10_000_000.0
 MAX_BEKLEYEN_TALEP = 10
@@ -53,6 +55,19 @@ DEFAULT_AYARLAR = {
 ADMIN_ALIASES = ("admin", "admin@dekontika.com")
 
 app = Flask(__name__)
+
+# --- MongoDB Atlas Kurulumu ---
+mongo_collection = None
+if MONGO_URI:
+    try:
+        mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        mongo_db = mongo_client["dekontika_bank"]
+        mongo_collection = mongo_db["system_state"]
+        mongo_client.admin.command('ping')
+        print("MongoDB Atlas bağlantısı başarılı.")
+    except Exception as exc:
+        print(f"MongoDB bağlantı hatası, yerel JSON'a dönülüyor: {exc}")
+        mongo_collection = None
 
 def _load_secret_key():
     env_key = os.getenv("SECRET_KEY")
@@ -118,7 +133,7 @@ def handle_unexpected(e):
     return jsonify(status="error", message="Sunucu tarafında beklenmeyen bir hata oluştu."), 500
 
 # ---------------------------------------------------------------------------
-# VERİTABANI KİLİTLİ YÖNETİM
+# VERİTABANI KİLİTLİ YÖNETİM (JSON & MongoDB)
 # ---------------------------------------------------------------------------
 _thread_lock = threading.Lock()
 
@@ -126,7 +141,8 @@ _thread_lock = threading.Lock()
 def db_lock():
     with _thread_lock:
         fh = None
-        if fcntl:
+        # MongoDB devredeyse dosya kilidi almamıza gerek kalmaz.
+        if fcntl and mongo_collection is None:
             try:
                 fh = open(LOCK_FILE, "a+")
                 fcntl.flock(fh, fcntl.LOCK_EX)
@@ -258,13 +274,28 @@ def normalize_db(db, create_admin=False):
             u["password"] = generate_password_hash(plain)
 
     if create_admin and "admin" not in db["users"]:
-        env_pw = os.getenv("ADMIN_PASSWORD", "Admin_S3cure_Pass!2026")
+        env_pw = os.getenv("ADMIN_PASSWORD", "1234")
         adm = new_user(db, "Sistem Yöneticisi", env_pw, admin=True, bakiye=10000.0)
         db["users"]["admin"] = adm
 
     return db
 
 def load_db():
+    if mongo_collection is not None:
+        try:
+            doc = mongo_collection.find_one({"_id": "main_db"})
+            if doc:
+                doc.pop("_id", None)
+                return normalize_db(doc)
+            # Atlas'ta veri yoksa ilk kurulum
+            initial = default_db()
+            normalize_db(initial, create_admin=True)
+            mongo_collection.update_one({"_id": "main_db"}, {"$set": initial}, upsert=True)
+            return initial
+        except Exception as e:
+            print(f"MongoDB okuma hatası: {e}")
+
+    # Fallback JSON okuma
     if os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
@@ -276,6 +307,16 @@ def load_db():
     return normalize_db(db)
 
 def save_db(data):
+    if mongo_collection is not None:
+        try:
+            payload = dict(data)
+            payload.pop("_id", None)
+            mongo_collection.update_one({"_id": "main_db"}, {"$set": payload}, upsert=True)
+            return
+        except Exception as e:
+            print(f"MongoDB yazma hatası: {e}")
+
+    # Fallback JSON yazma
     tmp = f"{DB_FILE}.{os.getpid()}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
@@ -973,16 +1014,51 @@ def api_havale():
 def api_admin_users():
     db = load_db()
     require_admin(db)
+    toplam_dolasim = round(sum(u.get("bakiye", 0) for u in db["users"].values() if not u.get("is_admin")), 2)
     return jsonify(
         status="success",
         users=db["users"],
         kasa=round(db["kasa"], 2),
+        toplam_dolasim=toplam_dolasim,
         ayarlar=db["ayarlar"],
         bekleyen_talepler=db.get("bekleyen_talepler", {}),
         dogrulama_talepleri=db.get("dogrulama_talepleri", {}),
         is_hesabi_talepleri=db.get("is_hesabi_talepleri", {}),
         epin_urunler=db.get("epin_urunler", {}),
     )
+
+@app.route("/api/admin/direct-verify", methods=["POST"])
+def api_admin_direct_verify():
+    target = body().get("email")
+    with transaction() as db:
+        require_admin(db)
+        if target in db["users"]:
+            db["users"][target]["dogrulandi"] = True
+            if target in db.get("dogrulama_talepleri", {}):
+                del db["dogrulama_talepleri"][target]
+    return jsonify(status="success", message=f"{target} hesabı doğrudan doğrulandı.")
+
+@app.route("/api/admin/seize-balance", methods=["POST"])
+def api_admin_seize_balance():
+    target = body().get("email")
+    with transaction() as db:
+        require_admin(db)
+        u = db["users"].get(target)
+        if not u: raise ApiError("Kullanıcı bulunamadı.")
+        amt = u.get("bakiye", 0.0)
+        if amt <= 0: raise ApiError("Kullanıcının el konulacak bakiyesi yok.")
+        u["bakiye"] = 0.0
+        db["kasa"] = round(db["kasa"] + amt, 2)
+        add_dekont(db, target, "EL_KOYMA", amt, "Merkez Bankası tarafından bakiyeye el konuldu.")
+    return jsonify(status="success", message=f"{amt} TL tutarındaki bakiyeye el konulup kasaya aktarıldı.")
+
+@app.route("/api/admin/user-dekonts", methods=["POST"])
+def api_admin_user_dekonts():
+    target = body().get("email")
+    db = load_db()
+    require_admin(db)
+    dks = [d for d in db["dekontlar"] if d.get("user_email") == target]
+    return jsonify(status="success", dekontlar=dks)
 
 @app.route("/api/admin/approve-business", methods=["POST"])
 def api_admin_approve_business():
@@ -1137,14 +1213,13 @@ def api_admin_grafik():
     db = load_db()
     require_admin(db)
     toplam_kasa = round(db.get("kasa", 0), 2)
-    toplam_kredi = round(sum(k.get("kalan_borc", 0) for u in db["users"].values() for k in u.get("krediler", [])), 2)
     toplam_mevduat = round(sum(u.get("bakiye", 0) for u in db["users"].values() if not u.get("is_admin")), 2)
 
-    labels = ['Banka Kasasi', 'Dagitilan Krediler', 'Musteri Bakiyeleri']
-    sizes = [toplam_kasa, toplam_kredi, toplam_mevduat]
-    colors = ['#2ecc71', '#e74c3c', '#3498db']
+    labels = ['Banka Kasasi', 'Musteri Bakiyeleri']
+    sizes = [toplam_kasa, toplam_mevduat]
+    colors = ['#2ecc71', '#3498db']
     if sum(sizes) == 0:
-        sizes = [1, 1, 1]
+        sizes = [1, 1]
 
     fig, ax = plt.subplots(figsize=(5, 5), facecolor='#1e1e2f')
     ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=140, textprops={'color': "white"})
