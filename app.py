@@ -34,11 +34,14 @@ DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 BACKUP_MIN_INTERVAL = int(os.getenv("BACKUP_MIN_INTERVAL", "300"))
 MONGO_URI = os.getenv("MONGO_URI")
 mongo_collection = None
+MONGO_URI = os.getenv("MONGO_URI")
+mongo_collection = None
 if MONGO_URI:
     try:
         mongo_client = MongoClient(
             MONGO_URI,
-            tlsCAFile=certifi.where(),
+            tls=True,
+            tlsAllowInvalidCertificates=True,
             serverSelectionTimeoutMS=5000
         )
         mongo_db = mongo_client["dekontika_bank"]
