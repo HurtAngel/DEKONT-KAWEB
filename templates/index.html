@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="tr" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dekontika - Dijital Bankacılık ve E-Pin</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #121212; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { background-color: #1e1e1e; border: 1px solid #333; }
+        .nav-tabs .nav-link.active { background-color: #2c2c2c; border-color: #333 #333 #2c2c2c; color: #fff; }
+        .nav-tabs .nav-link { color: #aaa; }
+        .toast-container { z-index: 1055; }
+        .hidden { display: none !important; }
+        .card-no { font-family: monospace; letter-spacing: 2px; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+
+    <!-- Bildirimler (Toasts) -->
+    <div class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+    <!-- Yükleniyor Ekranı -->
+    <div id="loader" class="d-flex justify-content-center align-items-center vh-100 position-fixed top-0 start-0 w-100 bg-dark z-3">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+    </div>
+
+    <!-- GİRİŞ & KAYIT EKRANI -->
+    <div id="auth-section" class="container vh-100 d-flex justify-content-center align-items-center hidden">
+        <div class="card p-4 shadow-lg" style="width: 400px; max-width: 100%;">
+            <div class="text-center mb-4">
+                <h2 class="fw-bold text-primary"><i class="bi bi-bank"></i> Dekontika</h2>
+                <p class="text-muted small">Dijital Bankacılık ve E-Pin Pazarı</p>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form">
+                <div class="mb-3">
+                    <label class="form-label">E-Posta</label>
+                    <input type="text" id="login-email" class="form-control bg-dark text-white border-secondary" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Parola</label>
+                    <input type="password" id="login-password" class="form-control bg-dark text-white border-secondary" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
+                <div class="text-center mt-3">
+                    <a href="#" class="text-decoration-none small" onclick="toggleAuth()">Hesabın yok mu? Kayıt Ol</a>
+                </div>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" class="hidden">
+                <div class="mb-3">
+                    <label class="form-label">Ad Soyad</label>
+                    <input type="text" id="reg-name" class="form-control bg-dark text-white border-secondary" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">E-Posta</label>
+                    <input type="email" id="reg-email" class="form-control bg-dark text-white border-secondary" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Parola</label>
+                    <input type="password" id="reg-password" class="form-control bg-dark text-white border-secondary" required>
+                </div>
+                <button type="submit" class="btn btn-success w-100">Kayıt Ol</button>
+                <div class="text-center mt-3">
+                    <a href="#" class="text-decoration-none small" onclick="toggleAuth()">Zaten hesabın var mı? Giriş Yap</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- KULLANICI PANELİ -->
+    <div id="user-section" class="hidden">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
+            <div class="container">
+                <a class="navbar-brand fw-bold text-primary" href="#"><i class="bi bi-bank"></i> Dekontika</a>
+                <div class="d-flex align-items-center">
+                    <span class="me-3 text-light" id="nav-user-name"></span>
+                    <button class="btn btn-sm btn-outline-danger" onclick="logout()">Çıkış Yap</button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container mt-4">
+            <div class="row">
+                <!-- Sol Taraf: Profil & Kart -->
+                <div class="col-md-4 mb-4">
+                    <div class="card p-3 mb-3 shadow">
+                        <h5 class="text-muted mb-1">Kullanılabilir Bakiye</h5>
+                        <h2 class="text-success fw-bold"><span id="user-bakiye">0.00</span> TL</h2>
+                        <hr class="border-secondary">
+                        <p class="mb-1 small text-muted">Kredi Notu: <span id="user-kredinotu" class="text-light"></span></p>
+                        <p class="mb-1 small text-muted">Durum: <span id="user-durum" class="badge bg-info"></span></p>
+                        <p class="mb-0 small text-muted">Hesap Tipi: <span id="user-tipi" class="badge bg-secondary">Bireysel</span></p>
+                    </div>
+
+                    <div class="card p-3 shadow" style="background: linear-gradient(135deg, #2c3e50, #000000);">
+                        <h6 class="text-light opacity-75">Sanal Kart</h6>
+                        <div class="card-no mt-2 mb-3 text-white" id="user-cardno">**** **** **** ****</div>
+                        <div class="d-flex justify-content-between text-light small opacity-75">
+                            <span>SKT: <span id="user-skt"></span></span>
+                            <span>CVV: <span id="user-cvv"></span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-3 mt-3 shadow">
+                        <p class="mb-1 small text-muted">IBAN:</p>
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control bg-dark text-info" id="user-iban" readonly>
+                            <button class="btn btn-outline-secondary" onclick="copyToClipboard('user-iban')"><i class="bi bi-clipboard"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sağ Taraf: Sekmeler -->
+                <div class="col-md-8">
+                    <ul class="nav nav-tabs mb-3" id="userTabs">
+                        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-banka">Bankacılık</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-kredi">Krediler</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-epin">E-Pin Market</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-dekont">Dekontlar</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-ayarlar">Hesap/Onay</a></li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- Bankacılık -->
+                        <div class="tab-pane fade show active" id="tab-banka">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="card p-3">
+                                        <h5>Para Transferi (Havale)</h5>
+                                        <input type="text" id="havale-iban" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Alıcı IBAN">
+                                        <input type="number" id="havale-tutar" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Tutar (TL)">
+                                        <button class="btn btn-primary w-100" onclick="islemYap('havale')">Gönder</button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="card p-3">
+                                        <h5>Para Çek</h5>
+                                        <input type="number" id="cek-tutar" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Tutar (TL)">
+                                        <button class="btn btn-warning w-100" onclick="islemYap('para-cek')">Talep Et</button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="card p-3">
+                                        <h5>Para Yatır</h5>
+                                        <input type="number" id="yatir-tutar" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Tutar (TL)">
+                                        <input type="text" id="yatir-kanit" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Açıklama / Dekont Notu">
+                                        <button class="btn btn-success w-100" onclick="islemYap('para-yatir')">Talep Et</button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="card p-3">
+                                        <h5>Hızlı Ödeme (Komisyonlu)</h5>
+                                        <input type="number" id="odeme-tutar" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Tutar (TL)">
+                                        <input type="text" id="odeme-aciklama" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Açıklama / Fatura No">
+                                        <button class="btn btn-danger w-100" onclick="islemYap('odeme')">Öde</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Krediler -->
+                        <div class="tab-pane fade" id="tab-kredi">
+                            <div class="card p-3 mb-3">
+                                <h5>Yeni Kredi Başvurusu</h5>
+                                <div class="d-flex gap-2">
+                                    <input type="number" id="kredi-tutar" class="form-control bg-dark text-white border-secondary" placeholder="Tutar (TL)">
+                                    <select id="kredi-hafta" class="form-select bg-dark text-white border-secondary">
+                                        <option value="3">3 Hafta</option>
+                                        <option value="6">6 Hafta</option>
+                                        <option value="12">12 Hafta</option>
+                                    </select>
+                                    <button class="btn btn-primary" onclick="islemYap('kredi-cek')">Başvur</button>
+                                </div>
+                            </div>
+                            <h5>Aktif Kredilerim</h5>
+                            <div id="krediler-list"></div>
+                        </div>
+
+                        <!-- E-Pin Market -->
+                        <div class="tab-pane fade" id="tab-epin">
+                            <div id="epin-satis-panel" class="card p-3 mb-3 border-warning hidden">
+                                <h5><i class="bi bi-shop"></i> E-Pin Satışı Ekle (İş Hesabı)</h5>
+                                <div class="row">
+                                    <div class="col-md-4 mb-2">
+                                        <input type="text" id="epin-baslik" class="form-control bg-dark text-white border-secondary" placeholder="Ürün Adı">
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <input type="number" id="epin-fiyat" class="form-control bg-dark text-white border-secondary" placeholder="Fiyat (TL)">
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <button class="btn btn-warning w-100" onclick="epinEkle()">Markete Koy</button>
+                                    </div>
+                                    <div class="col-12">
+                                        <textarea id="epin-kodlar" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Her satıra bir kod gelecek şekilde kodları yapıştırın."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <h5>Market <small class="text-muted">(Sanal Kart Bilgilerinizle Alınır)</small></h5>
+                            <div class="row" id="market-list"></div>
+                            
+                            <h5 class="mt-4">Aldığım Kodlar</h5>
+                            <div class="table-responsive">
+                                <table class="table table-dark table-sm">
+                                    <thead><tr><th>Tarih</th><th>Ürün</th><th>Kod</th><th>Fiyat</th><th>Satıcı</th></tr></thead>
+                                    <tbody id="aldigim-kodlar-list"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Dekontlar -->
+                        <div class="tab-pane fade" id="tab-dekont">
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-dark table-striped table-sm">
+                                    <thead class="sticky-top bg-dark">
+                                        <tr><th>Tarih</th><th>Dekont No</th><th>Tür</th><th>Tutar</th><th>Açıklama</th></tr>
+                                    </thead>
+                                    <tbody id="dekont-list"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Ayarlar / Doğrulama -->
+                        <div class="tab-pane fade" id="tab-ayarlar">
+                            <div class="card p-3 mb-3 border-danger" id="dogrulama-panel">
+                                <h5>Kimlik / Yüz Doğrulaması (Kısıt Kaldırma)</h5>
+                                <p class="small text-muted mb-2">Havale limitlerini kaldırmak ve E-Pin alabilmek için gereklidir.</p>
+                                <input type="file" id="selfie-file" accept="image/*" class="form-control bg-dark text-white border-secondary mb-2">
+                                <button class="btn btn-danger" onclick="uploadSelfie()">Gönder (Admin Onaylı)</button>
+                            </div>
+                            
+                            <div class="card p-3 mb-3 border-warning" id="is-hesabi-panel">
+                                <h5>İş Hesabı Başvurusu</h5>
+                                <p class="small text-muted mb-2">Para çekiminde %0 komisyon ve E-Pin Markette satış yapabilme yetkisi verir.</p>
+                                <button class="btn btn-warning" onclick="requestBusiness()">İş Hesabı Talep Et</button>
+                            </div>
+                            
+                            <div class="card p-3">
+                                <h5>Bekleyen Taleplerim</h5>
+                                <ul class="list-group list-group-flush bg-dark" id="bekleyen-user-list"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN PANELİ -->
+    <div id="admin-section" class="hidden">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-danger border-bottom border-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand fw-bold" href="#"><i class="bi bi-shield-lock"></i> Merkez Bankası (Admin)</a>
+                <div class="d-flex">
+                    <a href="/api/admin/backup" class="btn btn-sm btn-dark me-2"><i class="bi bi-download"></i> Yedek İndir</a>
+                    <button class="btn btn-sm btn-outline-light" onclick="logout()">Çıkış Yap</button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container-fluid mt-3">
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="nav flex-column nav-pills" id="adminTabs">
+                        <a class="nav-link active" data-bs-toggle="pill" href="#adm-genel">Genel Bakış</a>
+                        <a class="nav-link" data-bs-toggle="pill" href="#adm-onaylar">Onay Bekleyenler</a>
+                        <a class="nav-link" data-bs-toggle="pill" href="#adm-kullanicilar">Kullanıcılar</a>
+                        <a class="nav-link" data-bs-toggle="pill" href="#adm-epin">E-Pin Yönetimi</a>
+                        <a class="nav-link" data-bs-toggle="pill" href="#adm-ayarlar">Sistem Ayarları</a>
+                    </div>
+                </div>
+                <div class="col-md-10">
+                    <div class="tab-content">
+                        <!-- Genel Bakış -->
+                        <div class="tab-pane fade show active" id="adm-genel">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <div class="card p-3 text-center">
+                                        <h5>Banka Kasası</h5>
+                                        <h2 class="text-success"><span id="adm-kasa">0</span> TL</h2>
+                                    </div>
+                                </div>
+                                <div class="col-md-8 mb-3">
+                                    <div class="card p-3 text-center">
+                                        <h5>Varlık Dağılımı</h5>
+                                        <img id="adm-grafik" src="" alt="Grafik Yükleniyor" class="img-fluid" style="max-height: 300px; object-fit: contain;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Onay Bekleyenler -->
+                        <div class="tab-pane fade" id="adm-onaylar">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h5>Finansal Talepler</h5>
+                                    <div id="adm-bekleyen-list"></div>
+                                </div>
+                                <div class="col-md-4">
+                                    <h5>Doğrulama Talepleri (Selfie)</h5>
+                                    <div id="adm-dogrulama-list"></div>
+                                </div>
+                                <div class="col-md-4">
+                                    <h5>İş Hesabı Talepleri</h5>
+                                    <div id="adm-is-hesabi-list"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Kullanıcılar -->
+                        <div class="tab-pane fade" id="adm-kullanicilar">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-striped table-sm text-center">
+                                    <thead><tr><th>E-Posta</th><th>Ad Soyad</th><th>Bakiye</th><th>Durum</th><th>İş Hesabı</th><th>İşlem</th></tr></thead>
+                                    <tbody id="adm-users-list"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- E-Pin Yönetimi -->
+                        <div class="tab-pane fade" id="adm-epin">
+                            <div class="card p-3 border-danger mb-3">
+                                <h5>Merkezden Ürün Ekle</h5>
+                                <div class="row">
+                                    <div class="col-md-3 mb-2"><input type="text" id="adm-epin-baslik" class="form-control bg-dark text-white border-secondary" placeholder="Başlık"></div>
+                                    <div class="col-md-3 mb-2"><input type="number" id="adm-epin-fiyat" class="form-control bg-dark text-white border-secondary" placeholder="Fiyat (TL)"></div>
+                                    <div class="col-md-3 mb-2"><input type="text" id="adm-epin-satici" class="form-control bg-dark text-white border-secondary" placeholder="Satıcı (admin veya email)" value="admin"></div>
+                                    <div class="col-md-3 mb-2"><button class="btn btn-danger w-100" onclick="admEpinEkle()">Ekle</button></div>
+                                    <div class="col-12"><textarea id="adm-epin-kodlar" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Kodlar (Satır satır)"></textarea></div>
+                                </div>
+                            </div>
+                            <h5>Sistemdeki Tüm Ürünler</h5>
+                            <table class="table table-dark table-sm">
+                                <thead><tr><th>ID</th><th>Başlık</th><th>Fiyat</th><th>Satıcı</th><th>Stok</th><th>İşlem</th></tr></thead>
+                                <tbody id="adm-epin-list"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Sistem Ayarları -->
+                        <div class="tab-pane fade" id="adm-ayarlar">
+                            <div class="card p-3" style="max-width: 500px;">
+                                <div class="mb-2">
+                                    <label>Ödeme Komisyonu (Örn: 0.60)</label>
+                                    <input type="number" step="0.01" id="set-kom-odeme" class="form-control bg-dark text-white">
+                                </div>
+                                <div class="mb-2">
+                                    <label>Çekim Komisyonu (Örn: 0.10)</label>
+                                    <input type="number" step="0.01" id="set-kom-cekme" class="form-control bg-dark text-white">
+                                </div>
+                                <div class="mb-2">
+                                    <label>Havale Komisyonu (Örn: 0.05)</label>
+                                    <input type="number" step="0.01" id="set-kom-havale" class="form-control bg-dark text-white">
+                                </div>
+                                <div class="mb-2">
+                                    <label>E-Pin Satış Kesintisi / Banka Payı (Örn: 0.25)</label>
+                                    <input type="number" step="0.01" id="set-kom-epin" class="form-control bg-dark text-white">
+                                </div>
+                                <div class="mb-3">
+                                    <label>Taban Kredi Faizi (Örn: 0.05)</label>
+                                    <input type="number" step="0.01" id="set-kredi-faiz" class="form-control bg-dark text-white">
+                                </div>
+                                <button class="btn btn-primary" onclick="ayarlariKaydet()">Kaydet</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- E-Pin Satın Alma Modalı -->
+    <div class="modal fade" id="buyModal" tabindex="-1" data-bs-theme="dark">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header">
+                    <h5 class="modal-title">E-Pin Satın Al</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Güvenlik için Sanal Kart bilgilerinizi giriniz.</p>
+                    <input type="hidden" id="buy-urun-id">
+                    <input type="text" id="buy-kart" class="form-control bg-dark text-white mb-2" placeholder="Kart Numarası (4444 ...)">
+                    <div class="d-flex gap-2">
+                        <input type="text" id="buy-skt" class="form-control bg-dark text-white" placeholder="SKT (AA/YY)">
+                        <input type="text" id="buy-cvv" class="form-control bg-dark text-white" placeholder="CVV">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-success" onclick="buyEpinConfirm()">Satın Al</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Uygulama JavaScript -->
+    <script>
+        let csrfToken = "";
+        let authState = false;
+        let adminState = false;
+        const buyModalObj = new bootstrap.Modal(document.getElementById('buyModal'));
+
+        // Yardımcı Fonksiyonlar
+        function g(id) { return document.getElementById(id); }
+        function hide(id) { g(id).classList.add("hidden"); }
+        function show(id) { g(id).classList.remove("hidden"); }
+        function toggleAuth() { g("login-form").classList.toggle("hidden"); g("register-form").classList.toggle("hidden"); }
+        
+        function showToast(msg, type="primary") {
+            const toastHtml = `<div class="toast align-items-center text-bg-${type} border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex"><div class="toast-body">${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>
+            </div>`;
+            const container = document.querySelector('.toast-container');
+            container.insertAdjacentHTML('beforeend', toastHtml);
+            setTimeout(() => { if(container.lastChild) container.lastChild.remove(); }, 4000);
+        }
+
+        function copyToClipboard(id) {
+            const copyText = g(id);
+            copyText.select();
+            document.execCommand("copy");
+            showToast("Kopyalandı!", "secondary");
+        }
+
+        // Merkezi API İsteği
+        async function fetchAPI(url, method = "GET", bodyObj = null) {
+            g("loader").classList.remove("hidden");
+            const headers = { "Content-Type": "application/json" };
+            if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+            
+            const options = { method, headers };
+            if (bodyObj) options.body = JSON.stringify(bodyObj);
+
+            try {
+                const res = await fetch(url, options);
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    if (res.status === 401 || res.status === 403 && data.message.includes("Oturum")) {
+                        authState = false; renderState();
+                    }
+                    showToast(data.message || "Bir hata oluştu.", "danger");
+                    return null;
+                }
+                if (data.csrf) csrfToken = data.csrf;
+                if (data.message) showToast(data.message, "success");
+                return data;
+            } catch (err) {
+                showToast("Sunucuya bağlanılamadı.", "danger");
+                return null;
+            } finally {
+                g("loader").classList.add("hidden");
+            }
+        }
+
+        // Oturum Kontrolü ve Başlatma
+        async function init() {
+            const res = await fetchAPI("/api/session");
+            if (res) {
+                csrfToken = res.csrf;
+                authState = res.authenticated;
+                adminState = res.is_admin;
+                renderState();
+            }
+        }
+
+        function renderState() {
+            hide("auth-section"); hide("user-section"); hide("admin-section");
+            if (!authState) {
+                show("auth-section");
+            } else if (adminState) {
+                show("admin-section");
+                loadAdminData();
+            } else {
+                show("user-section");
+                loadUserData();
+            }
+        }
+
+        // Auth İşlemleri
+        g("login-form").onsubmit = async (e) => {
+            e.preventDefault();
+            const res = await fetchAPI("/api/login", "POST", { email: g("login-email").value, password: g("login-password").value });
+            if (res) { authState = true; adminState = res.is_admin; renderState(); }
+        };
+
+        g("register-form").onsubmit = async (e) => {
+            e.preventDefault();
+            const res = await fetchAPI("/api/register", "POST", { ad_soyad: g("reg-name").value, email: g("reg-email").value, password: g("reg-password").value });
+            if (res) { authState = true; adminState = false; renderState(); }
+        };
+
+        async function logout() {
+            await fetchAPI("/api/logout", "POST", {});
+            authState = false; adminState = false;
+            renderState();
+        }
+
+        // ================= KULLANICI İŞLEMLERİ =================
+        async function loadUserData() {
+            const data = await fetchAPI("/api/user-data");
+            if (!data) return;
+            const u = data.user;
+            
+            // Profil
+            g("nav-user-name").innerText = u.ad_soyad;
+            g("user-bakiye").innerText = u.bakiye.toFixed(2);
+            g("user-iban").value = u.iban;
+            g("user-cardno").innerText = u.kart_no;
+            g("user-skt").innerText = u.skt;
+            g("user-cvv").innerText = u.cvv;
+            g("user-kredinotu").innerText = u.kredi_notu;
+            g("user-durum").innerText = u.durum;
+            
+            let tip = "Bireysel (Kısıtlı)";
+            if (u.dogrulandi) tip = "Bireysel (Doğrulanmış)";
+            if (u.is_hesabi) { tip = "İş Hesabı"; show("epin-satis-panel"); } else { hide("epin-satis-panel"); }
+            g("user-tipi").innerText = tip;
+
+            // Panelleri gizle/göster
+            if (u.dogrulandi) hide("dogrulama-panel"); else show("dogrulama-panel");
+            if (u.is_hesabi || data.is_hesabi_talep_var) hide("is-hesabi-panel"); else show("is-hesabi-panel");
+
+            // Krediler
+            g("krediler-list").innerHTML = data.krediler.map(k => `
+                <div class="card bg-dark border-secondary p-2 mb-2">
+                    <div class="d-flex justify-content-between">
+                        <span>Borç: ${k.kalan_borc.toFixed(2)} TL (${k.kalan_hafta} Hft)</span>
+                        <div>
+                            <button class="btn btn-sm btn-outline-warning" onclick="krediOde('haftalik', '${k.kredi_id}')">Taksit (${k.haftalik_taksit.toFixed(2)} TL)</button>
+                            <button class="btn btn-sm btn-outline-success" onclick="krediOde('tamami', '${k.kredi_id}')">Kapat</button>
+                        </div>
+                    </div>
+                </div>
+            `).join("") || '<p class="text-muted">Aktif kredi yok.</p>';
+
+            // E-Pin Market
+            g("market-list").innerHTML = data.market.map(m => `
+                <div class="col-md-4 mb-3">
+                    <div class="card p-3 border-${m.platform ? 'danger' : 'secondary'}">
+                        <h6>${m.baslik}</h6>
+                        <h4 class="text-success">${m.fiyat.toFixed(2)} TL</h4>
+                        <p class="small text-muted mb-2">Satıcı: ${m.satici_ad}<br>Stok: ${m.stok}</p>
+                        <button class="btn btn-primary btn-sm w-100" onclick="openBuyModal('${m.id}')">Satın Al</button>
+                    </div>
+                </div>
+            `).join("");
+
+            // Satın Alınanlar
+            g("aldigim-kodlar-list").innerHTML = data.satinalinan_epinler.map(e => `
+                <tr><td>${e.tarih}</td><td>${e.urun_adi}</td><td><code>${e.kod}</code></td><td>${e.fiyat.toFixed(2)}</td><td>${e.satici_ad}</td></tr>
+            `).join("");
+
+            // Dekontlar
+            g("dekont-list").innerHTML = data.dekontlar.map(d => `
+                <tr><td>${d.tarih}</td><td>${d.dekont_no}</td><td>${d.tur}</td><td class="text-${d.tutar>0?'success':'danger'}">${d.tutar.toFixed(2)}</td><td>${d.aciklama}</td></tr>
+            `).join("");
+
+            // Bekleyen Talepler
+            g("bekleyen-user-list").innerHTML = data.bekleyen.map(b => `<li class="list-group-item bg-dark text-white">Tür: ${b.tur} | Tutar: ${b.tutar} | Tarih: ${b.tarih}</li>`).join("") || '<li class="list-group-item bg-dark text-muted">Bekleyen işlem yok.</li>';
+        }
+
+        async function islemYap(tur) {
+            let body = {}, endpoint = "";
+            if (tur === 'havale') { endpoint = "/api/action/havale"; body = { iban: g("havale-iban").value, tutar: g("havale-tutar").value }; }
+            else if (tur === 'para-cek') { endpoint = "/api/action/para-cek"; body = { tutar: g("cek-tutar").value }; }
+            else if (tur === 'para-yatir') { endpoint = "/api/action/para-yatir"; body = { tutar: g("yatir-tutar").value, kanit: g("yatir-kanit").value }; }
+            else if (tur === 'odeme') { endpoint = "/api/action/odeme"; body = { fiyat: g("odeme-tutar").value, aciklama: g("odeme-aciklama").value }; }
+            else if (tur === 'kredi-cek') { endpoint = "/api/action/kredi-cek"; body = { tutar: g("kredi-tutar").value, hafta: g("kredi-hafta").value }; }
+            
+            const res = await fetchAPI(endpoint, "POST", body);
+            if(res) {
+                // Inputları temizle
+                document.querySelectorAll("input[type=text], input[type=number]").forEach(i=>i.value="");
+                loadUserData();
+            }
+        }
+
+        async function krediOde(tip, id) {
+            const res = await fetchAPI(`/api/action/kredi-ode-${tip}`, "POST", { kredi_id: id });
+            if(res) loadUserData();
+        }
+
+        // Selfie Yükleme
+        async function uploadSelfie() {
+            const file = g("selfie-file").files[0];
+            if(!file) return showToast("Resim seçin", "warning");
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const res = await fetchAPI("/api/user/upload-selfie", "POST", { image: e.target.result });
+                if(res) loadUserData();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function requestBusiness() {
+            const res = await fetchAPI("/api/user/request-business", "POST", {});
+            if(res) loadUserData();
+        }
+
+        // E-Pin
+        function openBuyModal(urun_id) {
+            g("buy-urun-id").value = urun_id;
+            g("buy-kart").value = ""; g("buy-skt").value = ""; g("buy-cvv").value = "";
+            buyModalObj.show();
+        }
+        async function buyEpinConfirm() {
+            const res = await fetchAPI("/api/market/buy-epin", "POST", { 
+                urun_id: g("buy-urun-id").value, kart_no: g("buy-kart").value, skt: g("buy-skt").value, cvv: g("buy-cvv").value 
+            });
+            if(res) { buyModalObj.hide(); loadUserData(); }
+        }
+        async function epinEkle() {
+            const res = await fetchAPI("/api/epin/create", "POST", { baslik: g("epin-baslik").value, fiyat: g("epin-fiyat").value, kodlar: g("epin-kodlar").value });
+            if(res) { g("epin-baslik").value=""; g("epin-fiyat").value=""; g("epin-kodlar").value=""; loadUserData(); }
+        }
+
+        // ================= ADMIN İŞLEMLERİ =================
+        async function loadAdminData() {
+            const data = await fetchAPI("/api/admin/overview");
+            if (!data) return;
+
+            g("adm-kasa").innerText = data.kasa.toFixed(2);
+            g("adm-grafik").src = "/api/admin/grafik?t=" + new Date().getTime();
+
+            // Kullanıcılar Tablosu
+            g("adm-users-list").innerHTML = Object.entries(data.users).map(([email, u]) => `
+                <tr>
+                    <td>${email}</td><td>${u.ad_soyad}</td><td class="text-success">${u.bakiye.toFixed(2)}</td>
+                    <td>${u.durum}</td><td>${u.is_hesabi ? 'Evet' : 'Hayır'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-success" onclick="editUser('${email}','bakiye_ekle')">+ Bky</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="editUser('${email}','bakiye_kes')">- Bky</button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="editUser('${email}', '${u.durum==='aktif'?'dondur':'aktif_et'}')">Dondur/Aç</button>
+                    </td>
+                </tr>
+            `).join("");
+
+            // Bekleyen Talepler
+            g("adm-bekleyen-list").innerHTML = Object.entries(data.bekleyen_talepler).map(([id, t]) => `
+                <div class="card bg-dark border-secondary p-2 mb-2">
+                    <p class="mb-1 small">Tür: <b>${t.tur}</b> | Tutar: ${t.tutar}</p>
+                    <p class="mb-1 small text-muted">Kullanıcı: ${t.user_id}</p>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-success w-50" onclick="admApproveReq('${id}','onay')">Onayla</button>
+                        <button class="btn btn-sm btn-danger w-50" onclick="admApproveReq('${id}','red')">Reddet</button>
+                    </div>
+                </div>
+            `).join("") || '<p class="text-muted small">Talep yok.</p>';
+
+            // Selfie Doğrulama
+            g("adm-dogrulama-list").innerHTML = Object.entries(data.dogrulama_talepleri).map(([email, d]) => `
+                <div class="card bg-dark border-secondary p-2 mb-2 text-center">
+                    <p class="mb-1 small">${d.ad_soyad} (${email})</p>
+                    <img src="${d.selfie}" style="height: 80px; object-fit: cover; margin-bottom:5px;">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-success w-50" onclick="admVerifyUser('${email}','onay')">Onayla</button>
+                        <button class="btn btn-sm btn-danger w-50" onclick="admVerifyUser('${email}','red')">Reddet</button>
+                    </div>
+                </div>
+            `).join("") || '<p class="text-muted small">Doğrulama yok.</p>';
+
+            // İş Hesabı Onay
+            g("adm-is-hesabi-list").innerHTML = Object.entries(data.is_hesabi_talepleri).map(([email, d]) => `
+                <div class="card bg-dark border-warning p-2 mb-2">
+                    <p class="mb-1 small">${d.ad_soyad} (${email})</p>
+                    <div class="d-flex gap-2 mt-2">
+                        <button class="btn btn-sm btn-success w-50" onclick="admApproveBusiness('${email}','onay')">Onayla</button>
+                        <button class="btn btn-sm btn-danger w-50" onclick="admApproveBusiness('${email}','red')">Reddet</button>
+                    </div>
+                </div>
+            `).join("") || '<p class="text-muted small">İş hesabı başvurusu yok.</p>';
+
+            // Ayarlar formunu doldur
+            g("set-kom-odeme").value = data.ayarlar.komisyon_odeme;
+            g("set-kom-cekme").value = data.ayarlar.komisyon_cekme;
+            g("set-kom-havale").value = data.ayarlar.komisyon_havale;
+            g("set-kom-epin").value = data.ayarlar.komisyon_epin_satis;
+            g("set-kredi-faiz").value = data.ayarlar.kredi_faiz;
+
+            // E-Pin Yönetimi
+            g("adm-epin-list").innerHTML = Object.values(data.epin_urunler).map(e => `
+                <tr>
+                    <td>${e.id}</td><td>${e.baslik}</td><td>${e.fiyat}</td><td>${e.satici}</td><td>${e.stok_kodlar.length}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="admDeleteEpin('${e.id}')">Sil</button>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        async function editUser(email, action) {
+            let amount = 0;
+            if(action.includes('bakiye')) amount = prompt("Tutar girin:");
+            if(amount === null) return;
+            const res = await fetchAPI("/api/admin/edit-user", "POST", { email, action, amount });
+            if(res) loadAdminData();
+        }
+        async function admApproveReq(req_id, action) {
+            const res = await fetchAPI("/api/admin/approve-request", "POST", { req_id, action });
+            if(res) loadAdminData();
+        }
+        async function admVerifyUser(email, action) {
+            const res = await fetchAPI("/api/admin/verify-user", "POST", { email, action });
+            if(res) loadAdminData();
+        }
+        async function admApproveBusiness(email, action) {
+            const res = await fetchAPI("/api/admin/approve-business", "POST", { email, action });
+            if(res) loadAdminData();
+        }
+        async function ayarlariKaydet() {
+            const res = await fetchAPI("/api/admin/update-settings", "POST", {
+                komisyon_odeme: g("set-kom-odeme").value,
+                komisyon_cekme: g("set-kom-cekme").value,
+                komisyon_havale: g("set-kom-havale").value,
+                komisyon_epin_satis: g("set-kom-epin").value,
+                kredi_faiz: g("set-kredi-faiz").value
+            });
+            if(res) loadAdminData();
+        }
+        async function admEpinEkle() {
+            const res = await fetchAPI("/api/admin/add-epin", "POST", { 
+                baslik: g("adm-epin-baslik").value, 
+                fiyat: g("adm-epin-fiyat").value, 
+                satici: g("adm-epin-satici").value,
+                kodlar: g("adm-epin-kodlar").value 
+            });
+            if(res) { g("adm-epin-baslik").value=""; g("adm-epin-fiyat").value=""; g("adm-epin-kodlar").value=""; loadAdminData(); }
+        }
+        async function admDeleteEpin(urun_id) {
+            if(!confirm("Emin misiniz?")) return;
+            const res = await fetchAPI("/api/admin/delete-epin", "POST", { urun_id });
+            if(res) loadAdminData();
+        }
+
+        // Başlangıç
+        window.onload = init;
+    </script>
+</body>
+</html>
