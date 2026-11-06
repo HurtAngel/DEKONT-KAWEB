@@ -1,0 +1,6 @@
+bank_db.json
+bank_db.json.*
+.dekontika_secret
+__pycache__/
+*.pyc
+.env
