@@ -256,8 +256,12 @@
         <nav class="navbar navbar-expand-lg navbar-dark bg-danger border-bottom border-dark">
             <div class="container-fluid">
                 <a class="navbar-brand fw-bold" href="#"><i class="bi bi-shield-lock"></i> Merkez Bankası (Admin)</a>
-                <div class="d-flex">
+                <div class="d-flex align-items-center">
                     <a href="/api/admin/backup" class="btn btn-sm btn-dark me-2"><i class="bi bi-download"></i> Yedek İndir</a>
+                    <input type="file" id="adm-restore-file" accept=".json" class="d-none" onchange="admRestoreDb(event)">
+                    <button class="btn btn-sm btn-outline-light me-2" onclick="document.getElementById('adm-restore-file').click()">
+                        <i class="bi bi-upload"></i> Yedek Yükle
+                    </button>
                     <button class="btn btn-sm btn-outline-light" onclick="logout()">Çıkış Yap</button>
                 </div>
             </div>
@@ -739,6 +743,44 @@
             if(!confirm("Emin misiniz?")) return;
             const res = await fetchAPI("/api/admin/delete-epin", "POST", { urun_id });
             if(res) loadAdminData();
+        }
+
+        async function admRestoreDb(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!confirm("Dikkat! Bu işlem mevcut tüm verilerin üzerine yazacaktır. Devam etmek istiyor musunuz?")) {
+                event.target.value = "";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            g("loader").classList.remove("hidden");
+            try {
+                const headers = {};
+                if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+
+                const res = await fetch("/api/admin/restore-db", {
+                    method: "POST",
+                    headers: headers,
+                    body: formData
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    showToast(data.message || "Yükleme sırasında hata oluştu.", "danger");
+                } else {
+                    showToast(data.message || "Veritabanı başarıyla geri yüklendi!", "success");
+                    loadAdminData(); // Paneli yeni verilerle tazele
+                }
+            } catch (err) {
+                showToast("Sunucuyla bağlantı kurulamadı.", "danger");
+            } finally {
+                g("loader").classList.add("hidden");
+                event.target.value = ""; // Seçiciyi sıfırla
+            }
         }
 
         // Başlangıç
