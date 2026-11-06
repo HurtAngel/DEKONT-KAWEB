@@ -282,21 +282,10 @@ def normalize_db(db, create_admin=False):
     return db
 
 def load_db():
-    if mongo_collection is not None:
-        try:
-            doc = mongo_collection.find_one({"_id": "main_db"})
-            if doc:
-                doc.pop("_id", None)
-                return normalize_db(doc)
-            # Atlas'ta veri yoksa ilk kurulum
-            initial = default_db()
-            normalize_db(initial, create_admin=True)
-            mongo_collection.update_one({"_id": "main_db"}, {"$set": initial}, upsert=True)
-            return initial
-        except Exception as e:
-            print(f"MongoDB okuma hatası: {e}")
+    cloud_data = mongo_load()
+    if cloud_data is not None:
+        return normalize_db(cloud_data)
 
-    # Fallback JSON okuma
     if os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
@@ -308,16 +297,10 @@ def load_db():
     return normalize_db(db)
 
 def save_db(data):
-    if mongo_collection is not None:
-        try:
-            payload = dict(data)
-            payload.pop("_id", None)
-            mongo_collection.update_one({"_id": "main_db"}, {"$set": payload}, upsert=True)
-            return
-        except Exception as e:
-            print(f"MongoDB yazma hatası: {e}")
+    # MongoDB devredeyse önce buluta yazar
+    mongo_save(data)
 
-    # Fallback JSON yazma
+    # Aynı zamanda yerel diske de yazar (çift güvence)
     tmp = f"{DB_FILE}.{os.getpid()}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
