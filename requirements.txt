@@ -4,4 +4,4 @@ gunicorn>=21.2.0
 requests>=2.31.0
 matplotlib>=3.8.0
 pymongo[srv]>=4.6.0
-pymongo[srv]>=4.6.0
+dnspython>=2.4.0
