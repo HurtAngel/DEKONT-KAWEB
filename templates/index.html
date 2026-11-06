@@ -15,6 +15,7 @@
         .toast-container { z-index: 1055; }
         .hidden { display: none !important; }
         .card-no { font-family: monospace; letter-spacing: 2px; font-size: 1.2rem; }
+        video#webcam { border-radius: 8px; border: 2px solid #555; background-color: #000; }
     </style>
 </head>
 <body>
@@ -123,7 +124,7 @@
                         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-kredi">Krediler</a></li>
                         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-epin">E-Pin Market</a></li>
                         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-dekont">Dekontlar</a></li>
-                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-ayarlar">Hesap/Onay</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-ayarlar">Hesap/Doğrulama</a></li>
                     </ul>
 
                     <div class="tab-content">
@@ -225,13 +226,28 @@
                             </div>
                         </div>
 
-                        <!-- Ayarlar / Doğrulama -->
+                        <!-- Ayarlar & Kamera ile 144p Selfie Doğrulama -->
                         <div class="tab-pane fade" id="tab-ayarlar">
                             <div class="card p-3 mb-3 border-danger" id="dogrulama-panel">
-                                <h5>Kimlik / Yüz Doğrulaması (Kısıt Kaldırma)</h5>
-                                <p class="small text-muted mb-2">Havale limitlerini kaldırmak ve E-Pin alabilmek için gereklidir.</p>
-                                <input type="file" id="selfie-file" accept="image/*" class="form-control bg-dark text-white border-secondary mb-2">
-                                <button class="btn btn-danger" onclick="uploadSelfie()">Gönder (Admin Onaylı)</button>
+                                <h5><i class="bi bi-person-bounding-box"></i> Kimlik / 144p Canlı Yüz Doğrulaması</h5>
+                                <p class="small text-muted mb-2">Havale limitlerini kaldırmak ve E-Pin alabilmek için kameradan selfie çekin.</p>
+                                
+                                <!-- Canlı Kamera Alanı -->
+                                <div id="camera-container" class="text-center mb-2 hidden">
+                                    <video id="webcam" autoplay playsinline style="width: 100%; max-width: 320px; height: 180px; object-fit: cover;"></video>
+                                    <canvas id="snap-canvas" width="256" height="144" class="hidden"></canvas>
+                                </div>
+
+                                <div class="d-flex gap-2 mb-2">
+                                    <button class="btn btn-outline-info w-50" id="btn-open-cam" onclick="openCamera()"><i class="bi bi-camera-video"></i> Kamerayı Başlat</button>
+                                    <button class="btn btn-danger w-50 hidden" id="btn-snap" onclick="takeSelfie()"><i class="bi bi-camera"></i> 144p Fotoğraf Çek</button>
+                                </div>
+
+                                <!-- Dosyadan Seçme (Yine Otomatik 144p Downscale Edilir) -->
+                                <div class="mt-2 pt-2 border-top border-secondary">
+                                    <label class="form-label small text-muted">Veya Cihazdan Resim Seçin (Otomatik 144p yapılır):</label>
+                                    <input type="file" id="selfie-file" accept="image/*" class="form-control form-control-sm bg-dark text-white border-secondary mb-2" onchange="handleFileSelect(event)">
+                                </div>
                             </div>
                             
                             <div class="card p-3 mb-3 border-warning" id="is-hesabi-panel">
@@ -273,26 +289,32 @@
                     <div class="nav flex-column nav-pills" id="adminTabs">
                         <a class="nav-link active" data-bs-toggle="pill" href="#adm-genel">Genel Bakış</a>
                         <a class="nav-link" data-bs-toggle="pill" href="#adm-onaylar">Onay Bekleyenler</a>
-                        <a class="nav-link" data-bs-toggle="pill" href="#adm-kullanicilar">Kullanıcılar</a>
+                        <a class="nav-link" data-bs-toggle="pill" href="#adm-kullanicilar">Müşteriler / Müfettiş</a>
                         <a class="nav-link" data-bs-toggle="pill" href="#adm-epin">E-Pin Yönetimi</a>
                         <a class="nav-link" data-bs-toggle="pill" href="#adm-ayarlar">Sistem Ayarları</a>
                     </div>
                 </div>
                 <div class="col-md-10">
                     <div class="tab-content">
-                        <!-- Genel Bakış -->
+                        <!-- Genel Bakış (Dolaşımdaki Para Sayaçlı) -->
                         <div class="tab-pane fade show active" id="adm-genel">
                             <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <div class="card p-3 text-center">
+                                <div class="col-md-3 mb-3">
+                                    <div class="card p-3 text-center border-success">
                                         <h5>Banka Kasası</h5>
-                                        <h2 class="text-success"><span id="adm-kasa">0</span> TL</h2>
+                                        <h2 class="text-success fw-bold"><span id="adm-kasa">0</span> TL</h2>
                                     </div>
                                 </div>
-                                <div class="col-md-8 mb-3">
+                                <div class="col-md-3 mb-3">
+                                    <div class="card p-3 text-center border-info">
+                                        <h5>Piyasadaki Para</h5>
+                                        <h2 class="text-info fw-bold"><span id="adm-dolasim">0</span> TL</h2>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
                                     <div class="card p-3 text-center">
                                         <h5>Varlık Dağılımı</h5>
-                                        <img id="adm-grafik" src="" alt="Grafik Yükleniyor" class="img-fluid" style="max-height: 300px; object-fit: contain;">
+                                        <img id="adm-grafik" src="" alt="Grafik Yükleniyor" class="img-fluid" style="max-height: 250px; object-fit: contain;">
                                     </div>
                                 </div>
                             </div>
@@ -316,11 +338,21 @@
                             </div>
                         </div>
 
-                        <!-- Kullanıcılar -->
+                        <!-- Kullanıcılar & Müfettiş Denetimi (El Koy, Doğrula, İncele) -->
                         <div class="tab-pane fade" id="adm-kullanicilar">
                             <div class="table-responsive">
-                                <table class="table table-dark table-striped table-sm text-center">
-                                    <thead><tr><th>E-Posta</th><th>Ad Soyad</th><th>Bakiye</th><th>Durum</th><th>İş Hesabı</th><th>İşlem</th></tr></thead>
+                                <table class="table table-dark table-striped table-sm text-center align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>E-Posta</th>
+                                            <th>Ad Soyad</th>
+                                            <th>Bakiye</th>
+                                            <th>Durum</th>
+                                            <th>Doğrulama</th>
+                                            <th>İş Hesabı</th>
+                                            <th>Müfettiş & Hızlı İşlemler</th>
+                                        </tr>
+                                    </thead>
                                     <tbody id="adm-users-list"></tbody>
                                 </table>
                             </div>
@@ -402,6 +434,24 @@
         </div>
     </div>
 
+    <!-- Admin Müfettiş Modalı (Kullanıcı Dekont ve Para Kaynağı İnceleme) -->
+    <div class="modal fade" id="dekontModal" tabindex="-1" data-bs-theme="dark">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark text-light border-info">
+                <div class="modal-header">
+                    <h5 class="modal-title text-info"><i class="bi bi-search"></i> Müşteri Hesap Hareketleri & Para Kaynağı</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body table-responsive" style="max-height: 60vh;">
+                    <table class="table table-dark table-sm table-striped">
+                        <thead><tr><th>Tarih</th><th>İşlem Türü</th><th>Tutar (TL)</th><th>Açıklama / Kaynak</th></tr></thead>
+                        <tbody id="modal-dekont-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
@@ -410,9 +460,10 @@
         let csrfToken = "";
         let authState = false;
         let adminState = false;
+        let videoStream = null;
         const buyModalObj = new bootstrap.Modal(document.getElementById('buyModal'));
+        const dekontModalObj = new bootstrap.Modal(document.getElementById('dekontModal'));
 
-        // Yardımcı Fonksiyonlar
         function g(id) { return document.getElementById(id); }
         function hide(id) { g(id).classList.add("hidden"); }
         function show(id) { g(id).classList.remove("hidden"); }
@@ -465,7 +516,7 @@
             }
         }
 
-        // Oturum Kontrolü ve Başlatma
+        // Oturum Kontrolü
         async function init() {
             const res = await fetchAPI("/api/session");
             if (res) {
@@ -503,6 +554,7 @@
         };
 
         async function logout() {
+            if(videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
             await fetchAPI("/api/logout", "POST", {});
             authState = false; adminState = false;
             renderState();
@@ -514,7 +566,6 @@
             if (!data) return;
             const u = data.user;
             
-            // Profil
             g("nav-user-name").innerText = u.ad_soyad;
             g("user-bakiye").innerText = u.bakiye.toFixed(2);
             g("user-iban").value = u.iban;
@@ -529,22 +580,21 @@
             if (u.is_hesabi) { tip = "İş Hesabı"; show("epin-satis-panel"); } else { hide("epin-satis-panel"); }
             g("user-tipi").innerText = tip;
 
-            // Panelleri gizle/göster
             if (u.dogrulandi) hide("dogrulama-panel"); else show("dogrulama-panel");
             if (u.is_hesabi || data.is_hesabi_talep_var) hide("is-hesabi-panel"); else show("is-hesabi-panel");
 
             // Krediler
             g("krediler-list").innerHTML = data.krediler.map(k => `
                 <div class="card bg-dark border-secondary p-2 mb-2">
-                    <div class="d-flex justify-content-between">
-                        <span>Borç: ${k.kalan_borc.toFixed(2)} TL (${k.kalan_hafta} Hft)</span>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Borç: <b>${k.kalan_borc.toFixed(2)} TL</b> (${k.kalan_hafta} Hafta Kaldı)</span>
                         <div>
                             <button class="btn btn-sm btn-outline-warning" onclick="krediOde('haftalik', '${k.kredi_id}')">Taksit (${k.haftalik_taksit.toFixed(2)} TL)</button>
                             <button class="btn btn-sm btn-outline-success" onclick="krediOde('tamami', '${k.kredi_id}')">Kapat</button>
                         </div>
                     </div>
                 </div>
-            `).join("") || '<p class="text-muted">Aktif kredi yok.</p>';
+            `).join("") || '<p class="text-muted small">Aktif kredi bulunmuyor.</p>';
 
             // E-Pin Market
             g("market-list").innerHTML = data.market.map(m => `
@@ -553,23 +603,23 @@
                         <h6>${m.baslik}</h6>
                         <h4 class="text-success">${m.fiyat.toFixed(2)} TL</h4>
                         <p class="small text-muted mb-2">Satıcı: ${m.satici_ad}<br>Stok: ${m.stok}</p>
-                        <button class="btn btn-primary btn-sm w-100" onclick="openBuyModal('${m.id}')">Satın Al</button>
+                        <button class="btn btn-primary btn-sm w-100" onclick="openBuyModal('${m.id}')" ${m.stok === 0 ? 'disabled' : ''}>${m.stok === 0 ? 'Tükendi' : 'Satın Al'}</button>
                     </div>
                 </div>
-            `).join("");
+            `).join("") || '<p class="text-muted small col-12">Markette ürün bulunmuyor.</p>';
 
-            // Satın Alınanlar
+            // Aldığım Kodlar
             g("aldigim-kodlar-list").innerHTML = data.satinalinan_epinler.map(e => `
                 <tr><td>${e.tarih}</td><td>${e.urun_adi}</td><td><code>${e.kod}</code></td><td>${e.fiyat.toFixed(2)}</td><td>${e.satici_ad}</td></tr>
             `).join("");
 
             // Dekontlar
             g("dekont-list").innerHTML = data.dekontlar.map(d => `
-                <tr><td>${d.tarih}</td><td>${d.dekont_no}</td><td>${d.tur}</td><td class="text-${d.tutar>0?'success':'danger'}">${d.tutar.toFixed(2)}</td><td>${d.aciklama}</td></tr>
+                <tr><td>${d.tarih}</td><td>${d.dekont_no}</td><td><span class="badge bg-secondary">${d.tur}</span></td><td class="text-${d.tutar>0?'success':'danger'} fw-bold">${d.tutar.toFixed(2)}</td><td>${d.aciklama}</td></tr>
             `).join("");
 
             // Bekleyen Talepler
-            g("bekleyen-user-list").innerHTML = data.bekleyen.map(b => `<li class="list-group-item bg-dark text-white">Tür: ${b.tur} | Tutar: ${b.tutar} | Tarih: ${b.tarih}</li>`).join("") || '<li class="list-group-item bg-dark text-muted">Bekleyen işlem yok.</li>';
+            g("bekleyen-user-list").innerHTML = data.bekleyen.map(b => `<li class="list-group-item bg-dark text-white small">Tür: <b>${b.tur}</b> | Tutar: ${b.tutar} TL | Tarih: ${b.tarih}</li>`).join("") || '<li class="list-group-item bg-dark text-muted small">Bekleyen talep yok.</li>';
         }
 
         async function islemYap(tur) {
@@ -582,7 +632,6 @@
             
             const res = await fetchAPI(endpoint, "POST", body);
             if(res) {
-                // Inputları temizle
                 document.querySelectorAll("input[type=text], input[type=number]").forEach(i=>i.value="");
                 loadUserData();
             }
@@ -593,14 +642,59 @@
             if(res) loadUserData();
         }
 
-        // Selfie Yükleme
-        async function uploadSelfie() {
-            const file = g("selfie-file").files[0];
-            if(!file) return showToast("Resim seçin", "warning");
+        // ================= KAMERA & OTOMATİK 144p DOWNSCALE MOTORU =================
+        async function openCamera() {
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                g('webcam').srcObject = videoStream;
+                show('camera-container');
+                show('btn-snap');
+                hide('btn-open-cam');
+            } catch (err) {
+                showToast("Kamera başlatılamadı veya izin verilmedi.", "danger");
+            }
+        }
+
+        async function takeSelfie() {
+            const video = g('webcam');
+            const canvas = g('snap-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 256x144 çözünürlüğe küçültüp çiz (144p downscale)
+            ctx.drawImage(video, 0, 0, 256, 144);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+            // Kamerayı kapat
+            if(videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            hide('camera-container');
+            hide('btn-snap');
+            show('btn-open-cam');
+
+            const res = await fetchAPI("/api/user/upload-selfie", "POST", { image: dataUrl });
+            if(res) loadUserData();
+        }
+
+        // Dosya seçilirse de otomatik 144p'ye küçült
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
             const reader = new FileReader();
-            reader.onload = async (e) => {
-                const res = await fetchAPI("/api/user/upload-selfie", "POST", { image: e.target.result });
-                if(res) loadUserData();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = async function() {
+                    const canvas = g('snap-canvas');
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, 256, 144); // 144p downscale
+                    const downscaledUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    
+                    const res = await fetchAPI("/api/user/upload-selfie", "POST", { image: downscaledUrl });
+                    if(res) loadUserData();
+                };
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
@@ -610,7 +704,7 @@
             if(res) loadUserData();
         }
 
-        // E-Pin
+        // E-Pin İşlemleri
         function openBuyModal(urun_id) {
             g("buy-urun-id").value = urun_id;
             g("buy-kart").value = ""; g("buy-skt").value = ""; g("buy-cvv").value = "";
@@ -633,25 +727,35 @@
             if (!data) return;
 
             g("adm-kasa").innerText = data.kasa.toFixed(2);
+            if(data.toplam_dolasim !== undefined) g("adm-dolasim").innerText = data.toplam_dolasim.toFixed(2);
             g("adm-grafik").src = "/api/admin/grafik?t=" + new Date().getTime();
 
-            // Kullanıcılar Tablosu
+            // Müşteriler Tablosu (Tam Yetkili & Müfettiş)
             g("adm-users-list").innerHTML = Object.entries(data.users).map(([email, u]) => `
                 <tr>
-                    <td>${email}</td><td>${u.ad_soyad}</td><td class="text-success">${u.bakiye.toFixed(2)}</td>
-                    <td>${u.durum}</td><td>${u.is_hesabi ? 'Evet' : 'Hayır'}</td>
+                    <td><div class="fw-bold">${email}</div></td>
+                    <td>${u.ad_soyad}</td>
+                    <td class="text-success fw-bold">${u.bakiye.toFixed(2)} TL</td>
+                    <td><span class="badge bg-${u.durum==='aktif'?'info':'secondary'}">${u.durum}</span></td>
+                    <td>${u.dogrulandi ? '<span class="badge bg-success">Onaylı</span>' : '<span class="badge bg-warning text-dark">Kısıtlı</span>'}</td>
+                    <td>${u.is_hesabi ? '<span class="badge bg-primary">İş</span>' : '<span class="badge bg-dark">Bireysel</span>'}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-success" onclick="editUser('${email}','bakiye_ekle')">+ Bky</button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="editUser('${email}','bakiye_kes')">- Bky</button>
-                        <button class="btn btn-sm btn-outline-warning" onclick="editUser('${email}', '${u.durum==='aktif'?'dondur':'aktif_et'}')">Dondur/Aç</button>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-info" onclick="admViewDekonts('${email}')" title="Hesap Kaynağını İncele"><i class="bi bi-search"></i> İncele</button>
+                            ${!u.dogrulandi ? `<button class="btn btn-success" onclick="admDirectVerify('${email}')" title="Selfie beklemeden doğrula"><i class="bi bi-check-circle"></i> Doğrula</button>` : ''}
+                            <button class="btn btn-outline-success" onclick="editUser('${email}','bakiye_ekle')">+ Bky</button>
+                            <button class="btn btn-outline-danger" onclick="editUser('${email}','bakiye_kes')">- Bky</button>
+                            <button class="btn btn-warning" onclick="editUser('${email}', '${u.durum==='aktif'?'dondur':'aktif_et'}')">${u.durum==='aktif'?'Dondur':'Aç'}</button>
+                            <button class="btn btn-danger" onclick="admSeizeBalance('${email}')" title="Bakiyeye El Koy">El Koy</button>
+                        </div>
                     </td>
                 </tr>
             `).join("");
 
-            // Bekleyen Talepler
+            // Bekleyen Finansal Talepler
             g("adm-bekleyen-list").innerHTML = Object.entries(data.bekleyen_talepler).map(([id, t]) => `
                 <div class="card bg-dark border-secondary p-2 mb-2">
-                    <p class="mb-1 small">Tür: <b>${t.tur}</b> | Tutar: ${t.tutar}</p>
+                    <p class="mb-1 small">Tür: <b>${t.tur}</b> | ${t.tutar} TL</p>
                     <p class="mb-1 small text-muted">Kullanıcı: ${t.user_id}</p>
                     <div class="d-flex gap-2">
                         <button class="btn btn-sm btn-success w-50" onclick="admApproveReq('${id}','onay')">Onayla</button>
@@ -664,13 +768,13 @@
             g("adm-dogrulama-list").innerHTML = Object.entries(data.dogrulama_talepleri).map(([email, d]) => `
                 <div class="card bg-dark border-secondary p-2 mb-2 text-center">
                     <p class="mb-1 small">${d.ad_soyad} (${email})</p>
-                    <img src="${d.selfie}" style="height: 80px; object-fit: cover; margin-bottom:5px;">
+                    <img src="${d.selfie}" style="height: 100px; object-fit: contain; margin-bottom:5px; border:1px solid #444;">
                     <div class="d-flex gap-2">
                         <button class="btn btn-sm btn-success w-50" onclick="admVerifyUser('${email}','onay')">Onayla</button>
                         <button class="btn btn-sm btn-danger w-50" onclick="admVerifyUser('${email}','red')">Reddet</button>
                     </div>
                 </div>
-            `).join("") || '<p class="text-muted small">Doğrulama yok.</p>';
+            `).join("") || '<p class="text-muted small">Doğrulama talebi yok.</p>';
 
             // İş Hesabı Onay
             g("adm-is-hesabi-list").innerHTML = Object.entries(data.is_hesabi_talepleri).map(([email, d]) => `
@@ -683,7 +787,7 @@
                 </div>
             `).join("") || '<p class="text-muted small">İş hesabı başvurusu yok.</p>';
 
-            // Ayarlar formunu doldur
+            // Ayarlar
             g("set-kom-odeme").value = data.ayarlar.komisyon_odeme;
             g("set-kom-cekme").value = data.ayarlar.komisyon_cekme;
             g("set-kom-havale").value = data.ayarlar.komisyon_havale;
@@ -694,9 +798,7 @@
             g("adm-epin-list").innerHTML = Object.values(data.epin_urunler).map(e => `
                 <tr>
                     <td>${e.id}</td><td>${e.baslik}</td><td>${e.fiyat}</td><td>${e.satici}</td><td>${e.stok_kodlar.length}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-danger" onclick="admDeleteEpin('${e.id}')">Sil</button>
-                    </td>
+                    <td><button class="btn btn-sm btn-outline-danger" onclick="admDeleteEpin('${e.id}')">Sil</button></td>
                 </tr>
             `).join("");
         }
@@ -732,10 +834,7 @@
         }
         async function admEpinEkle() {
             const res = await fetchAPI("/api/admin/add-epin", "POST", { 
-                baslik: g("adm-epin-baslik").value, 
-                fiyat: g("adm-epin-fiyat").value, 
-                satici: g("adm-epin-satici").value,
-                kodlar: g("adm-epin-kodlar").value 
+                baslik: g("adm-epin-baslik").value, fiyat: g("adm-epin-fiyat").value, satici: g("adm-epin-satici").value, kodlar: g("adm-epin-kodlar").value 
             });
             if(res) { g("adm-epin-baslik").value=""; g("adm-epin-fiyat").value=""; g("adm-epin-kodlar").value=""; loadAdminData(); }
         }
@@ -745,11 +844,39 @@
             if(res) loadAdminData();
         }
 
+        // YENİ ADMİN YETKİ FONKSİYONLARI
+        async function admDirectVerify(email) {
+            const res = await fetchAPI("/api/admin/direct-verify", "POST", { email });
+            if(res) loadAdminData();
+        }
+
+        async function admSeizeBalance(email) {
+            if(!confirm(`DİKKAT: ${email} kullanıcısının tüm bakiyesine el konulup Merkez Bankası kasasına aktarılacak. Onaylıyor musunuz?`)) return;
+            const res = await fetchAPI("/api/admin/seize-balance", "POST", { email });
+            if(res) loadAdminData();
+        }
+
+        async function admViewDekonts(email) {
+            const res = await fetchAPI("/api/admin/user-dekonts", "POST", { email });
+            if(res) {
+                let html = res.dekontlar.map(d => `
+                    <tr>
+                        <td>${d.tarih}</td>
+                        <td><span class="badge bg-secondary">${d.tur}</span></td>
+                        <td class="text-${d.tutar>0?'success':'danger'} fw-bold">${d.tutar.toFixed(2)} TL</td>
+                        <td>${d.aciklama}</td>
+                    </tr>
+                `).join("");
+                g("modal-dekont-body").innerHTML = html || "<tr><td colspan='4' class='text-center text-muted'>Hesap hareketi bulunamadı.</td></tr>";
+                dekontModalObj.show();
+            }
+        }
+
         async function admRestoreDb(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            if (!confirm("Dikkat! Bu işlem mevcut tüm verilerin üzerine yazacaktır. Devam etmek istiyor musunuz?")) {
+            if (!confirm("Dikkat! Mevcut tüm veriler silinip bu yedek hem MongoDB'ye hem yerel diske yazılacak. Devam edilsin mi?")) {
                 event.target.value = "";
                 return;
             }
@@ -770,16 +897,16 @@
 
                 const data = await res.json();
                 if (!res.ok) {
-                    showToast(data.message || "Yükleme sırasında hata oluştu.", "danger");
+                    showToast(data.message || "Yükleme hatası.", "danger");
                 } else {
-                    showToast(data.message || "Veritabanı başarıyla geri yüklendi!", "success");
-                    loadAdminData(); // Paneli yeni verilerle tazele
+                    showToast("Veritabanı başarıyla geri yüklendi! Sayfa yenileniyor...", "success");
+                    setTimeout(() => window.location.reload(), 1500);
                 }
             } catch (err) {
                 showToast("Sunucuyla bağlantı kurulamadı.", "danger");
             } finally {
                 g("loader").classList.add("hidden");
-                event.target.value = ""; // Seçiciyi sıfırla
+                event.target.value = "";
             }
         }
 
