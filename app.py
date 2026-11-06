@@ -24,7 +24,7 @@ import requests
 from flask import Flask, Response, jsonify, render_template, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 from pymongo import MongoClient
-
+import certifi
 # ---------------------------------------------------------------------------
 # YAPILANDIRMA
 # ---------------------------------------------------------------------------
@@ -33,13 +33,14 @@ LOCK_FILE = DB_FILE + ".lock"
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 BACKUP_MIN_INTERVAL = int(os.getenv("BACKUP_MIN_INTERVAL", "300"))
 MONGO_URI = os.getenv("MONGO_URI")
-from pymongo import MongoClient
-
-MONGO_URI = os.getenv("MONGO_URI")
 mongo_collection = None
 if MONGO_URI:
     try:
-        mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        mongo_client = MongoClient(
+            MONGO_URI,
+            tlsCAFile=certifi.where(),
+            serverSelectionTimeoutMS=5000
+        )
         mongo_db = mongo_client["dekontika_bank"]
         mongo_collection = mongo_db["system_state"]
         mongo_client.admin.command('ping')
