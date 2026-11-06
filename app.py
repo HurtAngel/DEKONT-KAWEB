@@ -47,7 +47,7 @@ DEFAULT_AYARLAR = {
     "havale_sinir": 100.0,
     "kredi_faiz": 0.05,
     "gecikme_cezasi": 50.0,
-    "komisyon_epin_satis": 0.25, # Yeni sistem: Bankanın fiyat üstüne ekleyeceği ek pay (%25)
+    "komisyon_epin_satis": 0.25,
 }
 
 ADMIN_ALIASES = ("admin", "admin@dekontika.com")
@@ -58,11 +58,13 @@ def _load_secret_key():
     env_key = os.getenv("SECRET_KEY")
     if env_key:
         return env_key
-    path = os.path.join(os.path.dirname(os.path.abspath(DB_FILE)), ".dekontika_secret")
+    dir_path = os.path.dirname(os.path.abspath(DB_FILE))
+    path = os.path.join(dir_path, ".dekontika_secret")
     try:
         with open(path, "r", encoding="utf-8") as f:
             key = f.read().strip()
-            if key: return key
+            if key:
+                return key
     except OSError:
         pass
     key = secrets.token_hex(32)
@@ -78,15 +80,15 @@ app.secret_key = _load_secret_key()
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE") == "1",
+    SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "1") == "1",
     PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
     MAX_CONTENT_LENGTH=25 * 1024 * 1024,
     JSON_AS_ASCII=False,
 )
 
-if os.getenv("TRUST_PROXY") == "1":
+if os.getenv("TRUST_PROXY", "1") == "1":
     from werkzeug.middleware.proxy_fix import ProxyFix
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 # ---------------------------------------------------------------------------
 # HATA YÖNETİMİ
@@ -103,7 +105,7 @@ def handle_api_error(e):
 
 @app.errorhandler(413)
 def handle_too_large(_e):
-    return jsonify(status="error", message="Dosya çok büyük."), 413
+    return jsonify(status="error", message="Dosya boyutu çok büyük."), 413
 
 @app.errorhandler(Exception)
 def handle_unexpected(e):
@@ -112,8 +114,8 @@ def handle_unexpected(e):
         if request.path.startswith("/api/"):
             return jsonify(status="error", message=e.description or e.name), e.code
         return e
-    app.logger.exception("Beklenmeyen hata")
-    return jsonify(status="error", message="Beklenmeyen bir hata oluştu."), 500
+    app.logger.exception("Beklenmeyen sistem hatası")
+    return jsonify(status="error", message="Sunucu tarafında beklenmeyen bir hata oluştu."), 500
 
 # ---------------------------------------------------------------------------
 # VERİTABANI KİLİTLİ YÖNETİM
@@ -125,14 +127,20 @@ def db_lock():
     with _thread_lock:
         fh = None
         if fcntl:
-            fh = open(LOCK_FILE, "a+")
-            fcntl.flock(fh, fcntl.LOCK_EX)
+            try:
+                fh = open(LOCK_FILE, "a+")
+                fcntl.flock(fh, fcntl.LOCK_EX)
+            except OSError:
+                fh = None
         try:
             yield
         finally:
             if fh:
-                fcntl.flock(fh, fcntl.LOCK_UN)
-                fh.close()
+                try:
+                    fcntl.flock(fh, fcntl.LOCK_UN)
+                    fh.close()
+                except OSError:
+                    pass
 
 def now_str():
     return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -163,13 +171,15 @@ def generate_iban(db=None):
     used = {u.get("iban") for u in (db or {}).get("users", {}).values()}
     while True:
         iban = "TR" + _rand_digits(24)
-        if iban not in used: return iban
+        if iban not in used:
+            return iban
 
 def generate_card_number(db=None):
     used = {u.get("kart_no") for u in (db or {}).get("users", {}).values()}
     while True:
         card = "4444 " + " ".join(_rand_digits(4) for _ in range(3))
-        if card not in used: return card
+        if card not in used:
+            return card
 
 def _rand_id(prefix, k=6):
     return prefix + "".join(random.choices(string.ascii_uppercase + string.digits, k=k))
@@ -181,7 +191,8 @@ def generate_dekont_no(): return _rand_id("DKN-", 8)
 def generate_epin_id(db):
     while True:
         pid = _rand_id("EPIN-")
-        if pid not in db["epin_urunler"]: return pid
+        if pid not in db.get("epin_urunler", {}):
+            return pid
 
 def new_user(db, ad_soyad, password, *, admin=False, bakiye=0.0):
     return {
@@ -217,15 +228,17 @@ def default_db():
 def normalize_db(db, create_admin=False):
     for key, default in default_db().items():
         if key == "kasa":
-            try: db["kasa"] = float(db.get("kasa") or 0.0)
-            except (TypeError, ValueError): db["kasa"] = 0.0
+            try:
+                db["kasa"] = float(db.get("kasa") or 0.0)
+            except (TypeError, ValueError):
+                db["kasa"] = 0.0
         elif key not in db or not isinstance(db[key], type(default)):
             db[key] = default
 
     for key, val in DEFAULT_AYARLAR.items():
         db["ayarlar"].setdefault(key, val)
 
-    for email, u in db["users"].items():
+    for email, u in list(db["users"].items()):
         u.setdefault("ad_soyad", email)
         u.setdefault("bakiye", 0.0)
         u.setdefault("kredi_notu", 1000)
@@ -245,7 +258,7 @@ def normalize_db(db, create_admin=False):
             u["password"] = generate_password_hash(plain)
 
     if create_admin and "admin" not in db["users"]:
-        env_pw = os.getenv("ADMIN_PASSWORD", "123")
+        env_pw = os.getenv("ADMIN_PASSWORD", "Admin_S3cure_Pass!2026")
         adm = new_user(db, "Sistem Yöneticisi", env_pw, admin=True, bakiye=10000.0)
         db["users"]["admin"] = adm
 
@@ -253,8 +266,11 @@ def normalize_db(db, create_admin=False):
 
 def load_db():
     if os.path.exists(DB_FILE):
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            db = json.load(f)
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                db = json.load(f)
+        except Exception:
+            db = default_db()
     else:
         db = default_db()
     return normalize_db(db)
@@ -289,21 +305,29 @@ _backup_lock = threading.Lock()
 
 def mark_backup_dirty():
     if DISCORD_WEBHOOK_URL:
-        with _backup_lock: _backup_state["dirty"] = True
+        with _backup_lock:
+            _backup_state["dirty"] = True
 
 def flush_backup_if_due(force=False):
-    if not DISCORD_WEBHOOK_URL: return
+    if not DISCORD_WEBHOOK_URL:
+        return
     with _backup_lock:
         due = _backup_state["dirty"] and (time.time() - _backup_state["last"] >= BACKUP_MIN_INTERVAL)
-        if not (due or force): return
+        if not (due or force):
+            return
         _backup_state["dirty"] = False
         _backup_state["last"] = time.time()
     try:
         with open(DB_FILE, "rb") as f:
             payload = {"content": f"[OTOMATİK YEDEK] Veritabanı güncellendi ({now_str()})"}
-            requests.post(DISCORD_WEBHOOK_URL, data=payload, files={"file": ("bank_db_yedek.json", f, "application/json")}, timeout=20)
+            requests.post(
+                DISCORD_WEBHOOK_URL,
+                data=payload,
+                files={"file": ("bank_db_yedek.json", f, "application/json")},
+                timeout=15
+            )
     except Exception as exc:
-        print(f"Yedekleme hatasi: {exc}")
+        app.logger.warning(f"Yedekleme hatasi: {exc}")
 
 # ---------------------------------------------------------------------------
 # YARDIMCI FONKSİYONLAR
@@ -316,7 +340,8 @@ def body():
 
 def clean_iban(raw):
     cleaned = str(raw or "").strip().upper().replace(" ", "")
-    if cleaned and not cleaned.startswith("TR"): cleaned = "TR" + cleaned
+    if cleaned and not cleaned.startswith("TR"):
+        cleaned = "TR" + cleaned
     return cleaned
 
 def clean_card_number(raw):
@@ -325,20 +350,28 @@ def clean_card_number(raw):
 
 def parse_amount(value, label="tutar", required=True):
     if value in (None, ""):
-        if required: raise ApiError(f"Geçerli bir {label} girin.")
+        if required:
+            raise ApiError(f"Geçerli bir {label} girin.")
         return None
-    s = str(value).strip().replace(".", "").replace(",", ".")
-    try: val = float(s)
-    except ValueError: raise ApiError(f"Geçerli bir {label} girin.")
-    if math.isnan(val) or math.isinf(val) or val <= 0: raise ApiError(f"{label.capitalize()} sıfırdan büyük olmalı.")
+    s = str(value).strip().replace(" ", "").replace(",", ".")
+    try:
+        val = float(s)
+    except ValueError:
+        raise ApiError(f"Geçerli bir {label} girin.")
+    if math.isnan(val) or math.isinf(val) or val <= 0:
+        raise ApiError(f"{label.capitalize()} sıfırdan büyük olmalı.")
     val = round(val, 2)
-    if val > MAX_TUTAR: raise ApiError(f"{label.capitalize()} çok yüksek.")
+    if val > MAX_TUTAR:
+        raise ApiError(f"{label.capitalize()} çok yüksek.")
     return val
 
 def parse_rate(value, label):
-    try: val = float(str(value).replace(",", "."))
-    except (TypeError, ValueError): raise ApiError(f"{label} için geçerli sayı girin.")
-    if math.isnan(val) or val < 0 or val > 1: raise ApiError(f"{label} 0 ile %100 arasında olmalı.")
+    try:
+        val = float(str(value).replace(",", "."))
+    except (TypeError, ValueError):
+        raise ApiError(f"{label} için geçerli sayı girin.")
+    if math.isnan(val) or val < 0 or val > 1:
+        raise ApiError(f"{label} 0 ile %100 arasında olmalı.")
     return round(val, 4)
 
 def add_dekont(db, user_email, tur, tutar, aciklama):
@@ -356,7 +389,8 @@ def add_dekont(db, user_email, tur, tutar, aciklama):
 
 def require_user(db):
     email = session.get("user_email")
-    if not email: raise ApiError("Giriş yapmalısınız.", 401)
+    if not email:
+        raise ApiError("Giriş yapmalısınız.", 401)
     user = db["users"].get(email)
     if not user:
         session.pop("user_email", None)
@@ -368,17 +402,18 @@ def require_user(db):
 
 def require_admin(db):
     email, user = require_user(db)
-    if not user.get("is_admin"): raise ApiError("Yönetici yetkisi gerekir.", 403)
+    if not user.get("is_admin"):
+        raise ApiError("Yönetici yetkisi gerekir.", 403)
     return email, user
 
 def require_seller(db):
     email, user = require_user(db)
     if not (user.get("is_admin") or user.get("is_hesabi")):
-        raise ApiError("E-Pin satışı eklemek sadece İş Hesapları ve Adminler içindir.", 403)
+        raise ApiError("E-Pin satışı eklemek sadece İş Hesapları ve Yöneticiler içindir.", 403)
     return email, user
 
 def pending_of(db, email):
-    return [(rid, t) for rid, t in db["bekleyen_talepler"].items() if t.get("user_id") == email]
+    return [(rid, t) for rid, t in db.get("bekleyen_talepler", {}).items() if t.get("user_id") == email]
 
 def ensure_pending_room(db, email):
     if len(pending_of(db, email)) >= MAX_BEKLEYEN_TALEP:
@@ -387,26 +422,28 @@ def ensure_pending_room(db, email):
 def public_user(email, u):
     return {
         "email": email,
-        "ad_soyad": u["ad_soyad"],
-        "bakiye": round(u["bakiye"], 2),
-        "iban": u["iban"],
-        "kart_no": u["kart_no"],
-        "skt": u["skt"],
-        "cvv": u["cvv"],
-        "kredi_notu": u["kredi_notu"],
-        "durum": u["durum"],
-        "dogrulandi": bool(u["dogrulandi"]),
-        "is_hesabi": bool(u["is_hesabi"]),
-        "is_admin": bool(u["is_admin"]),
+        "ad_soyad": u.get("ad_soyad"),
+        "bakiye": round(u.get("bakiye", 0.0), 2),
+        "iban": u.get("iban"),
+        "kart_no": u.get("kart_no"),
+        "skt": u.get("skt"),
+        "cvv": u.get("cvv"),
+        "kredi_notu": u.get("kredi_notu"),
+        "durum": u.get("durum"),
+        "dogrulandi": bool(u.get("dogrulandi")),
+        "is_hesabi": bool(u.get("is_hesabi")),
+        "is_admin": bool(u.get("is_admin")),
     }
 
 def seller_name(db, satici):
-    if satici == "admin": return "DEKONTİKA (Merkez)"
+    if satici == "admin":
+        return "DEKONTİKA (Merkez)"
     s = db["users"].get(satici)
     return s["ad_soyad"] if s else "Bilinmiyor"
 
 def seller_can_sell(db, satici):
-    if satici == "admin": return True
+    if satici == "admin":
+        return True
     s = db["users"].get(satici)
     return bool(s and (s.get("is_hesabi") or s.get("is_admin")) and s.get("durum") != "dondurulmus")
 
@@ -414,21 +451,20 @@ def market_listing(db):
     items = []
     ek_pay_orani = db["ayarlar"].get("komisyon_epin_satis", 0.25)
 
-    for pid, p in db["epin_urunler"].items():
-        if not p.get("aktif", True) or not seller_can_sell(db, p.get("satici", "admin")): continue
+    for pid, p in db.get("epin_urunler", {}).items():
+        if not p.get("aktif", True) or not seller_can_sell(db, p.get("satici", "admin")):
+            continue
         
         satici = p.get("satici", "admin")
-        satici_isteyen_fiyat = float(p["fiyat"])
+        satici_isteyen_fiyat = float(p.get("fiyat", 0.0))
         
-        # Banka kasası için eklenecek olan ek pay
         banka_payi = round(satici_isteyen_fiyat * ek_pay_orani, 2)
-        # Müşteriye sunulan nihai satış fiyatı
         satis_fiyati = round(satici_isteyen_fiyat + banka_payi, 2)
 
         items.append({
             "id": pid,
-            "baslik": p["baslik"],
-            "fiyat": satis_fiyati, # Kullanıcıların markette göreceği fiyat
+            "baslik": p.get("baslik"),
+            "fiyat": satis_fiyati,
             "satici_kazanci": satici_isteyen_fiyat,
             "banka_payi": banka_payi,
             "stok": len(p.get("stok_kodlar", [])),
@@ -436,7 +472,7 @@ def market_listing(db):
             "satici_ad": seller_name(db, satici),
             "platform": satici == "admin",
         })
-    items.sort(key=lambda x: (x["stok"] == 0, x["baslik"].lower()))
+    items.sort(key=lambda x: (x["stok"] == 0, str(x["baslik"]).lower()))
     return items
 
 def pending_view(rid, t, db=None):
@@ -456,7 +492,7 @@ def csrf_protect():
         token = session.get("csrf")
         sent = request.headers.get("X-CSRF-Token", "")
         if not token or not hmac.compare_digest(token, sent):
-            return jsonify(status="error", message="Oturum doğrulaması başarısız."), 403
+            return jsonify(status="error", message="Oturum doğrulaması başarısız (CSRF hatası)."), 403
 
 @app.after_request
 def security_headers(resp):
@@ -497,8 +533,10 @@ def api_login():
     data = body()
     identity = str(data.get("email", "")).strip().lower()
     password = data.get("password")
-    if identity in ADMIN_ALIASES: identity = "admin"
-    if not identity or not password: raise ApiError("Bilgileri eksiksiz girin.")
+    if identity in ADMIN_ALIASES:
+        identity = "admin"
+    if not identity or not password:
+        raise ApiError("Bilgileri eksiksiz girin.")
 
     db = load_db()
     user = db["users"].get(identity)
@@ -517,11 +555,16 @@ def api_register():
     password = data.get("password")
     ad_soyad = " ".join(str(data.get("ad_soyad", "")).split())
 
-    if not email or not password or not ad_soyad: raise ApiError("Tüm alanları doldurun.")
-    if not EMAIL_RE.match(email): raise ApiError("Geçerli bir e-posta girin.")
+    if not email or not password or not ad_soyad:
+        raise ApiError("Tüm alanları doldurun.")
+    if not EMAIL_RE.match(email):
+        raise ApiError("Geçerli bir e-posta girin.")
+    if len(str(password)) < 6:
+        raise ApiError("Parola en az 6 karakter olmalıdır.")
 
     with transaction() as db:
-        if email in db["users"]: raise ApiError("Bu e-posta zaten kayıtlı.")
+        if email in db["users"]:
+            raise ApiError("Bu e-posta zaten kayıtlı.")
         db["users"][email] = new_user(db, ad_soyad, password)
 
     start_session(email)
@@ -553,8 +596,8 @@ def api_user_data():
         satinalinan_epinler=user.get("satinalinan_epinler", []),
         market=market_listing(db),
         bekleyen=bekleyen,
-        is_hesabi_talep_var=email in db["is_hesabi_talepleri"],
-        dogrulama_beklemede=email in db["dogrulama_talepleri"],
+        is_hesabi_talep_var=email in db.get("is_hesabi_talepleri", {}),
+        dogrulama_beklemede=email in db.get("dogrulama_talepleri", {}),
         ayarlar=db["ayarlar"],
     )
 
@@ -562,10 +605,14 @@ def api_user_data():
 def api_upload_selfie():
     image = body().get("image")
     if not isinstance(image, str) or not image.startswith("data:image/"):
-        raise ApiError("Resim alınamadı.")
+        raise ApiError("Geçerli bir resim verisi alınamadı.")
+    if len(image.encode('utf-8')) > MAX_SELFIE_BYTES:
+        raise ApiError("Selfie boyutu sınırı aşıyor (Maks 500 KB).")
+
     with transaction() as db:
         email, user = require_user(db)
-        if user.get("dogrulandi"): raise ApiError("Hesabınız zaten doğrulanmış.")
+        if user.get("dogrulandi"):
+            raise ApiError("Hesabınız zaten doğrulanmış.")
         user["selfie"] = image
         db["dogrulama_talepleri"][email] = {
             "email": email,
@@ -573,24 +620,27 @@ def api_upload_selfie():
             "selfie": image,
             "tarih": datetime.now().strftime("%d/%m/%Y %H:%M"),
         }
-    return jsonify(status="success", message="144p Selfie kaydedildi, admin onayına gönderildi!")
+    return jsonify(status="success", message="Selfie kaydedildi, yönetici onayına gönderildi!")
 
 @app.route("/api/user/request-business", methods=["POST"])
 def api_request_business():
     with transaction() as db:
         email, user = require_user(db)
-        if user.get("is_hesabi"): raise ApiError("Zaten İş Hesabına sahipsiniz.")
-        if not user.get("dogrulandi"): raise ApiError("İş hesabına başvurmak için önce 144p Selfie doğrulaması yapmalısınız.", 403)
-        if email in db["is_hesabi_talepleri"]: raise ApiError("Talebiniz zaten bulunuyor.")
+        if user.get("is_hesabi"):
+            raise ApiError("Zaten İş Hesabına sahipsiniz.")
+        if not user.get("dogrulandi"):
+            raise ApiError("İş hesabına başvurmak için önce kimlik/selfie doğrulaması yapmalısınız.", 403)
+        if email in db.get("is_hesabi_talepleri", {}):
+            raise ApiError("Talebiniz zaten inceleme aşamasındadır.")
         db["is_hesabi_talepleri"][email] = {
             "email": email,
             "ad_soyad": user["ad_soyad"],
             "tarih": datetime.now().strftime("%d/%m/%Y %H:%M"),
         }
-    return jsonify(status="success", message="💼 İş Hesabı talebiniz admin onayına gönderildi!")
+    return jsonify(status="success", message="İş Hesabı talebiniz yönetici onayına gönderildi!")
 
 # ---------------------------------------------------------------------------
-# YENİ E-PIN MARKET SİSTEMİ
+# E-PIN MARKET SİSTEMİ
 # ---------------------------------------------------------------------------
 @app.route("/api/market/buy-epin", methods=["POST"])
 def api_buy_epin():
@@ -602,39 +652,36 @@ def api_buy_epin():
 
     with transaction() as db:
         email, user = require_user(db)
-        # Kart güvenliği doğrulaması
         if clean_card_number(user["kart_no"]) != kart_no or user["skt"].strip() != skt or user["cvv"].strip() != cvv:
-            raise ApiError("❌ Kart Bilgileri Hatalı! (Kart No, SKT veya CVV uyuşmuyor)")
+            raise ApiError("Kart Bilgileri Hatalı! (Kart No, SKT veya CVV uyuşmuyor)")
 
-        urun = db["epin_urunler"].get(urun_id)
+        urun = db.get("epin_urunler", {}).get(urun_id)
         if not urun or not urun.get("aktif", True) or len(urun.get("stok_kodlar", [])) == 0:
             raise ApiError("Bu ürün stokta yok veya satışı durdurulmuş.")
 
         satici = urun.get("satici", "admin")
-        if satici == email: raise ApiError("Kendi ürününüzü satın alamazsınız.")
+        if satici == email:
+            raise ApiError("Kendi ürününüzü satın alamazsınız.")
 
-        # Ek pay hesabı
         satici_isteyen_fiyat = float(urun["fiyat"])
         ek_pay_orani = db["ayarlar"].get("komisyon_epin_satis", 0.25)
         banka_payi = round(satici_isteyen_fiyat * ek_pay_orani, 2)
         toplam_fiyat = round(satici_isteyen_fiyat + banka_payi, 2)
 
-        if user["bakiye"] < toplam_fiyat: 
+        if user["bakiye"] < toplam_fiyat:
             raise ApiError(f"Yetersiz Bakiye! Fiyat (Banka Payı Dahil): {toplam_fiyat} TL")
 
-        # Ödemeyi tahsil et
         user["bakiye"] = round(user["bakiye"] - toplam_fiyat, 2)
         kod = urun["stok_kodlar"].pop(0)
 
-        # Paranın dağıtılması
         if satici == "admin":
             db["kasa"] = round(db["kasa"] + toplam_fiyat, 2)
         else:
-            db["users"][satici]["bakiye"] = round(db["users"][satici]["bakiye"] + satici_isteyen_fiyat, 2)
+            if satici in db["users"]:
+                db["users"][satici]["bakiye"] = round(db["users"][satici]["bakiye"] + satici_isteyen_fiyat, 2)
             db["kasa"] = round(db["kasa"] + banka_payi, 2)
-            add_dekont(db, satici, "EPIN_SATIS", satici_isteyen_fiyat, f"Satış (Kasa Payı Hariç): {urun['baslik']} ({kod})")
+            add_dekont(db, satici, "EPIN_SATIS", satici_isteyen_fiyat, f"Satış: {urun['baslik']} ({kod})")
 
-        # Alıcı işlemleri
         user["satinalinan_epinler"].insert(0, {
             "urun_adi": urun["baslik"],
             "kod": kod,
@@ -644,7 +691,7 @@ def api_buy_epin():
         })
         add_dekont(db, email, "EPIN_SATIN_ALIM", toplam_fiyat, f"E-Pin Alımı: {urun['baslik']} ({kod})")
 
-    return jsonify(status="success", message=f"🎉 İşlem Başarılı! E-Pin Kodunuz: {kod}", kod=kod)
+    return jsonify(status="success", message=f"İşlem Başarılı! E-Pin Kodunuz: {kod}", kod=kod)
 
 @app.route("/api/epin/create", methods=["POST"])
 @app.route("/api/admin/add-epin", methods=["POST"])
@@ -654,21 +701,28 @@ def api_epin_create():
     fiyat = parse_amount(data.get("fiyat"), "fiyat")
     kodlar_raw = str(data.get("kodlar", "")).strip()
 
-    if not baslik or not kodlar_raw: raise ApiError("Başlık ve e-pin kodlarını girin.")
+    if not baslik or not kodlar_raw:
+        raise ApiError("Başlık ve e-pin kodlarını eksiksiz girin.")
     kodlar = [k.strip() for k in kodlar_raw.replace("\r", "").split("\n") if k.strip()]
+    if not kodlar:
+        raise ApiError("En az bir adet geçerli stok kodu girmelisiniz.")
 
     with transaction() as db:
-        email, user = require_seller(db) # İş Hesabı veya Admin olabilir
+        email, user = require_seller(db)
         pid = generate_epin_id(db)
+        
+        # Satıcı admin değilse, başkası adına ürün ekleyemez
+        satici = email if not user.get("is_admin") else str(data.get("satici", "admin"))
+
         db["epin_urunler"][pid] = {
             "id": pid,
             "baslik": baslik,
             "fiyat": fiyat,
-            "satici": email if not user.get("is_admin") else str(data.get("satici", "admin")),
+            "satici": satici,
             "aktif": True,
-            "stok_kodlar": kodlar,
+            "stok_kodlar": kodlar[:MAX_KOD_YUKLEME],
         }
-    return jsonify(status="success", message=f"✅ '{baslik}' ürünü markete eklendi. (Satışta otomatik %25 kasa payı uygulanacaktır.)")
+    return jsonify(status="success", message=f"'{baslik}' ürünü markete eklendi.")
 
 @app.route("/api/admin/edit-epin", methods=["POST"])
 def api_admin_edit_epin():
@@ -676,16 +730,15 @@ def api_admin_edit_epin():
     urun_id = data.get("urun_id")
     baslik = data.get("baslik")
     fiyat = data.get("fiyat")
-    kodlar_raw = data.get("kodlar") # İsteğe bağlı ek kodlar
+    kodlar_raw = data.get("kodlar")
     aktif = data.get("aktif")
 
     with transaction() as db:
-        require_admin(db) # SADECE adminler bu endpointi kullanabilir
-        if urun_id not in db["epin_urunler"]:
+        require_admin(db)
+        if urun_id not in db.get("epin_urunler", {}):
             raise ApiError("Ürün bulunamadı.")
             
         urun = db["epin_urunler"][urun_id]
-        
         if baslik:
             urun["baslik"] = str(baslik).strip()
         if fiyat is not None:
@@ -696,22 +749,22 @@ def api_admin_edit_epin():
             yeni_kodlar = [k.strip() for k in str(kodlar_raw).replace("\r", "").split("\n") if k.strip()]
             urun["stok_kodlar"].extend(yeni_kodlar)
             
-    return jsonify(status="success", message="E-Pin ürünü başarıyla güncellendi.")
+    return jsonify(status="success", message="E-Pin ürünü güncellendi.")
 
 @app.route("/api/admin/delete-epin", methods=["POST"])
 def api_admin_delete_epin():
     urun_id = body().get("urun_id")
     with transaction() as db:
         email, user = require_user(db)
-        urun = db["epin_urunler"].get(urun_id)
-        if not urun: raise ApiError("Ürün bulunamadı.")
+        urun = db.get("epin_urunler", {}).get(urun_id)
+        if not urun:
+            raise ApiError("Ürün bulunamadı.")
         
-        # Sadece adminler veya ürünü piyasaya süren kişi silebilir
         if not user.get("is_admin") and urun.get("satici") != email:
-            raise ApiError("Bu ürünü silme yetkiniz yok. Sadece adminler başkasının ürününü silebilir.", 403)
+            raise ApiError("Bu ürünü silme yetkiniz bulunmuyor.", 403)
             
         del db["epin_urunler"][urun_id]
-    return jsonify(status="success", message="Ürün marketten kalıcı olarak silindi.")
+    return jsonify(status="success", message="Ürün marketten silindi.")
 
 # ---------------------------------------------------------------------------
 # KREDİ İŞLEMLERİ
@@ -720,13 +773,19 @@ def api_admin_delete_epin():
 def api_kredi_cek():
     data = body()
     tutar = parse_amount(data.get("tutar"))
-    try: hafta = int(data.get("hafta", 3))
-    except ValueError: hafta = 3
-    if hafta < 3 or hafta > 12: raise ApiError("Kredi süresi 3-12 hafta arasında olmalıdır.")
+    try:
+        hafta = int(data.get("hafta", 3))
+    except (TypeError, ValueError):
+        hafta = 3
+    if hafta < 3 or hafta > 12:
+        raise ApiError("Kredi vadesi 3 ile 12 hafta arasında olmalıdır.")
 
     with transaction() as db:
         email, user = require_user(db)
-        if not user.get("dogrulandi"): raise ApiError("❌ Kısıtlı Hesap! Kredi çekmek için yüz doğrulaması şarttır.", 403)
+        if not user.get("dogrulandi"):
+            raise ApiError("Kısıtlı Hesap: Kredi çekmek için hesap doğrulaması şarttır.", 403)
+        if len(user.get("krediler", [])) >= MAX_AKTIF_KREDI:
+            raise ApiError(f"Aynı anda en fazla {MAX_AKTIF_KREDI} adet aktif krediniz olabilir.")
         ensure_pending_room(db, email)
 
         base_faiz = db["ayarlar"].get("kredi_faiz", 0.05)
@@ -745,7 +804,7 @@ def api_kredi_cek():
             "faiz_orani": round(oran * 100, 2),
             "tarih": datetime.now().strftime("%d/%m/%Y %H:%M"),
         }
-    return jsonify(status="success", message=f"{tutar} TL için {hafta} haftalık kredi talebi gönderildi (%{round(oran*100, 1)} faiz).")
+    return jsonify(status="success", message=f"{tutar} TL için kredi talebi gönderildi.")
 
 @app.route("/api/action/kredi-ode-haftalik", methods=["POST"])
 def api_kredi_haftalik():
@@ -753,10 +812,12 @@ def api_kredi_haftalik():
     with transaction() as db:
         email, user = require_user(db)
         kredi = next((k for k in user.get("krediler", []) if k["kredi_id"] == kredi_id), None)
-        if not kredi: raise ApiError("Kredi bulunamadı.")
+        if not kredi:
+            raise ApiError("Kredi bulunamadı.")
 
         taksit = min(kredi["haftalik_taksit"], kredi["kalan_borc"])
-        if user["bakiye"] < taksit: raise ApiError(f"Bakiye yetersiz! Taksit: {taksit} TL")
+        if user["bakiye"] < taksit:
+            raise ApiError(f"Bakiye yetersiz! Ödenmesi gereken taksit: {taksit} TL")
 
         user["bakiye"] = round(user["bakiye"] - taksit, 2)
         kredi["kalan_borc"] = round(kredi["kalan_borc"] - taksit, 2)
@@ -764,13 +825,13 @@ def api_kredi_haftalik():
         db["kasa"] = round(db["kasa"] + taksit, 2)
         user["kredi_notu"] += 15
 
-        add_dekont(db, email, "KREDI_TAKSIT_ODEME", taksit, f"Kredi: {kredi_id}")
+        add_dekont(db, email, "KREDI_TAKSIT_ODEME", taksit, f"Kredi Taksiti: {kredi_id}")
 
         if kredi["kalan_borc"] <= 0 or kredi["kalan_hafta"] <= 0:
             user["krediler"] = [k for k in user["krediler"] if k["kredi_id"] != kredi_id]
-            msg = "🎉 Kredi başarıyla kapandı."
+            msg = "Kredi borcu tamamen kapandı."
         else:
-            msg = f"✅ {taksit} TL taksit ödendi. Kalan borç: {kredi['kalan_borc']} TL"
+            msg = f"{taksit} TL taksit ödendi. Kalan borç: {kredi['kalan_borc']} TL"
     return jsonify(status="success", message=msg)
 
 @app.route("/api/action/kredi-ode-tamami", methods=["POST"])
@@ -779,17 +840,19 @@ def api_kredi_tamami():
     with transaction() as db:
         email, user = require_user(db)
         kredi = next((k for k in user.get("krediler", []) if k["kredi_id"] == kredi_id), None)
-        if not kredi: raise ApiError("Kredi bulunamadı.")
+        if not kredi:
+            raise ApiError("Kredi bulunamadı.")
 
         toplam = kredi["kalan_borc"]
-        if user["bakiye"] < toplam: raise ApiError(f"Bakiye yetersiz! Toplam: {toplam} TL")
+        if user["bakiye"] < toplam:
+            raise ApiError(f"Bakiye yetersiz! Kapatma tutarı: {toplam} TL")
 
         user["bakiye"] = round(user["bakiye"] - toplam, 2)
         db["kasa"] = round(db["kasa"] + toplam, 2)
         user["kredi_notu"] += 50
         user["krediler"] = [k for k in user["krediler"] if k["kredi_id"] != kredi_id]
-        add_dekont(db, email, "KREDI_KAPAMA", toplam, f"Kredi Erken Kapatıldı: {kredi_id}")
-    return jsonify(status="success", message=f"🎉 {toplam} TL ödenerek {kredi_id} kredisi kapatıldı!")
+        add_dekont(db, email, "KREDI_KAPAMA", toplam, f"Kredi Kapatıldı: {kredi_id}")
+    return jsonify(status="success", message=f"{toplam} TL ödenerek kredi kapatıldı.")
 
 # ---------------------------------------------------------------------------
 # BANKACILIK İŞLEMLERİ
@@ -799,15 +862,20 @@ def api_para_yatir():
     data = body()
     tutar = parse_amount(data.get("tutar"))
     kanit = str(data.get("kanit", "")).strip()
-    if not kanit: raise ApiError("Açıklama / Dekont notu girin.")
+    if not kanit:
+        raise ApiError("Açıklama veya dekont notu girin.")
 
     with transaction() as db:
         email, _ = require_user(db)
         ensure_pending_room(db, email)
         db["bekleyen_talepler"][generate_req_id()] = {
-            "tur": "para_yatirma", "user_id": email, "tutar": tutar, "kanit": kanit, "tarih": datetime.now().strftime("%d/%m/%Y %H:%M")
+            "tur": "para_yatirma",
+            "user_id": email,
+            "tutar": tutar,
+            "kanit": kanit,
+            "tarih": datetime.now().strftime("%d/%m/%Y %H:%M")
         }
-    return jsonify(status="success", message="Para yatırma talebiniz admin onayına gönderildi.")
+    return jsonify(status="success", message="Para yatırma talebiniz yönetici onayına gönderildi.")
 
 @app.route("/api/action/para-cek", methods=["POST"])
 def api_para_cek():
@@ -816,18 +884,23 @@ def api_para_cek():
         email, user = require_user(db)
         ensure_pending_room(db, email)
 
-        # İŞ HESABI AVANTAJI: %0 Komisyon
         komisyon = 0.0 if user.get("is_hesabi") else round(tutar * db["ayarlar"].get("komisyon_cekme", 0.10), 2)
         toplam = round(tutar + komisyon, 2)
 
-        if user["bakiye"] < toplam: raise ApiError(f"Bakiye yetersiz! Toplam Çekim Tutarı: {toplam} TL")
-        user["bakiye"] = round(user["bakiye"] - toplam, 2)  # Bakiye bloke edilir
+        if user["bakiye"] < toplam:
+            raise ApiError(f"Bakiye yetersiz! Çekilecek toplam tutar: {toplam} TL")
+        user["bakiye"] = round(user["bakiye"] - toplam, 2)
 
         db["bekleyen_talepler"][generate_req_id()] = {
-            "tur": "para_cekme", "user_id": email, "tutar": tutar, "komisyon": komisyon, "toplam": toplam, "tarih": datetime.now().strftime("%d/%m/%Y %H:%M")
+            "tur": "para_cekme",
+            "user_id": email,
+            "tutar": tutar,
+            "komisyon": komisyon,
+            "toplam": toplam,
+            "tarih": datetime.now().strftime("%d/%m/%Y %H:%M")
         }
-    extra = " (💼 İş Hesabı: %0 Komisyon)" if user.get("is_hesabi") else ""
-    return jsonify(status="success", message=f"Para çekme talebiniz oluşturuldu{extra}. Admin onayı bekleniyor.")
+    extra = " (İş Hesabı: Komisyonsuz)" if user.get("is_hesabi") else ""
+    return jsonify(status="success", message=f"Para çekme talebiniz oluşturuldu{extra}. Yönetici onayı bekleniyor.")
 
 @app.route("/api/action/odeme", methods=["POST"])
 def api_odeme():
@@ -837,20 +910,28 @@ def api_odeme():
 
     with transaction() as db:
         email, user = require_user(db)
-        if not user.get("dogrulandi"): raise ApiError("❌ Kısıtlı Hesap! Yüz doğrulaması yapmalısınız.", 403)
+        if not user.get("dogrulandi"):
+            raise ApiError("Kısıtlı Hesap: Ödeme yapabilmek için hesap doğrulaması gereklidir.", 403)
         ensure_pending_room(db, email)
 
         komisyon = round(fiyat * db["ayarlar"]["komisyon_odeme"], 2)
         toplam = round(fiyat + komisyon, 2)
 
-        if user["bakiye"] < toplam: raise ApiError(f"Bakiye Yetersiz! Toplam: {toplam} TL")
+        if user["bakiye"] < toplam:
+            raise ApiError(f"Bakiye Yetersiz! Toplam: {toplam} TL")
         user["bakiye"] = round(user["bakiye"] - toplam, 2)
 
         req_id = generate_req_id()
         db["bekleyen_talepler"][req_id] = {
-            "tur": "satin_alim", "user_id": email, "tutar": fiyat, "komisyon": komisyon, "toplam": toplam, "link": aciklama, "tarih": datetime.now().strftime("%d/%m/%Y %H:%M")
+            "tur": "satin_alim",
+            "user_id": email,
+            "tutar": fiyat,
+            "komisyon": komisyon,
+            "toplam": toplam,
+            "link": aciklama,
+            "tarih": datetime.now().strftime("%d/%m/%Y %H:%M")
         }
-    return jsonify(status="success", message=f"Ödeme alındı, onay bekleniyor. İşlem Kodu: {req_id}")
+    return jsonify(status="success", message=f"Ödeme alındı, onay bekleniyor. Talep No: {req_id}")
 
 @app.route("/api/action/havale", methods=["POST"])
 def api_havale():
@@ -861,16 +942,19 @@ def api_havale():
     with transaction() as db:
         email, gonderen = require_user(db)
         if not gonderen.get("dogrulandi") and tutar > KISITLI_GUNLUK_HAVALE:
-            raise ApiError(f"❌ Kısıtlı Hesap! Maks {KISITLI_GUNLUK_HAVALE} TL havale yapabilirsiniz.", 403)
+            raise ApiError(f"Kısıtlı Hesap: Günlük en fazla {KISITLI_GUNLUK_HAVALE} TL transfer yapılabilir.", 403)
 
         alici_email = next((e for e, u in db["users"].items() if u.get("iban") == hedef), None)
-        if not alici_email: raise ApiError("Alıcı IBAN bulunamadı.")
-        if alici_email == email: raise ApiError("Kendinize havale yapamazsınız.")
+        if not alici_email:
+            raise ApiError("Alıcı IBAN bulunamadı.")
+        if alici_email == email:
+            raise ApiError("Kendi hesabınıza havale yapamazsınız.")
 
         komisyon = round(tutar * db["ayarlar"]["komisyon_havale"], 2) if tutar > db["ayarlar"]["havale_sinir"] else 0.0
         toplam = round(tutar + komisyon, 2)
 
-        if gonderen["bakiye"] < toplam: raise ApiError("Bakiye yetersiz.")
+        if gonderen["bakiye"] < toplam:
+            raise ApiError("Yetersiz bakiye.")
 
         gonderen["bakiye"] = round(gonderen["bakiye"] - toplam, 2)
         db["users"][alici_email]["bakiye"] = round(db["users"][alici_email]["bakiye"] + tutar, 2)
@@ -879,7 +963,7 @@ def api_havale():
         add_dekont(db, email, "HAVALE_CIKIS", tutar, f"Alıcı: {hedef}")
         add_dekont(db, alici_email, "HAVALE_GIRIS", tutar, f"Gönderen: {gonderen['iban']}")
 
-    return jsonify(status="success", message="Havale gerçekleşti.")
+    return jsonify(status="success", message="Transfer işlemi başarıyla tamamlandı.")
 
 # ---------------------------------------------------------------------------
 # ADMIN YÖNETİM ENDPOINTLERİ
@@ -888,7 +972,7 @@ def api_havale():
 @app.route("/api/admin/overview", methods=["GET"])
 def api_admin_users():
     db = load_db()
-    _, admin = require_admin(db)
+    require_admin(db)
     return jsonify(
         status="success",
         users=db["users"],
@@ -921,36 +1005,45 @@ def api_admin_edit_user():
     with transaction() as db:
         require_admin(db)
         u = db["users"].get(target)
-        if not u: raise ApiError("Kullanıcı bulunamadı.")
+        if not u:
+            raise ApiError("Kullanıcı bulunamadı.")
 
         if action == "bakiye_ekle":
             u["bakiye"] = round(u["bakiye"] + amount, 2)
-            add_dekont(db, target, "ADMIN_BAKIYE_EKLE", amount, "Admin Bakiye Yüklemesi")
+            add_dekont(db, target, "ADMIN_BAKIYE_EKLE", amount, "Yönetici Bakiye Yüklemesi")
         elif action == "bakiye_kes":
             u["bakiye"] = max(0.0, round(u["bakiye"] - amount, 2))
-            add_dekont(db, target, "ADMIN_BAKIYE_KES", amount, "Admin Bakiye Düzeltmesi")
-        elif action == "dondur": u["durum"] = "dondurulmus"
-        elif action == "aktif_et": u["durum"] = "aktif"
-        elif action == "is_hesabi_yap": u["is_hesabi"] = True
-        elif action == "is_hesabi_kaldir": u["is_hesabi"] = False
+            add_dekont(db, target, "ADMIN_BAKIYE_KES", amount, "Yönetici Bakiye Düzeltmesi")
+        elif action == "dondur":
+            u["durum"] = "dondurulmus"
+        elif action == "aktif_et":
+            u["durum"] = "aktif"
+        elif action == "is_hesabi_yap":
+            u["is_hesabi"] = True
+        elif action == "is_hesabi_kaldir":
+            u["is_hesabi"] = False
 
-    return jsonify(status="success", message=f"{target} üzerinde işlem tamamlandı.")
+    return jsonify(status="success", message=f"{target} kullanıcısı güncellendi.")
 
 @app.route("/api/admin/update-settings", methods=["POST"])
 def api_admin_update_settings():
     data = body()
     with transaction() as db:
         require_admin(db)
-        db["ayarlar"]["komisyon_odeme"] = float(data.get("komisyon_odeme", 0.60))
-        db["ayarlar"]["komisyon_cekme"] = float(data.get("komisyon_cekme", 0.10))
-        db["ayarlar"]["komisyon_havale"] = float(data.get("komisyon_havale", 0.05))
-        db["ayarlar"]["kredi_faiz"] = float(data.get("kredi_faiz", 0.05))
-        db["ayarlar"]["gecikme_cezasi"] = float(data.get("gecikme_cezasi", 50.0))
-        # Admin ayarlarından market banka payı oranı güncellenmek istenirse buraya da eklenebilir.
+        if "komisyon_odeme" in data:
+            db["ayarlar"]["komisyon_odeme"] = float(data["komisyon_odeme"])
+        if "komisyon_cekme" in data:
+            db["ayarlar"]["komisyon_cekme"] = float(data["komisyon_cekme"])
+        if "komisyon_havale" in data:
+            db["ayarlar"]["komisyon_havale"] = float(data["komisyon_havale"])
+        if "kredi_faiz" in data:
+            db["ayarlar"]["kredi_faiz"] = float(data["kredi_faiz"])
+        if "gecikme_cezasi" in data:
+            db["ayarlar"]["gecikme_cezasi"] = float(data["gecikme_cezasi"])
         if "komisyon_epin_satis" in data:
-            db["ayarlar"]["komisyon_epin_satis"] = float(data.get("komisyon_epin_satis"))
+            db["ayarlar"]["komisyon_epin_satis"] = float(data["komisyon_epin_satis"])
             
-    return jsonify(status="success", message="Sistem ayarları güncellendi!")
+    return jsonify(status="success", message="Sistem ayarları güncellendi.")
 
 @app.route("/api/admin/approve-request", methods=["POST"])
 def api_admin_approve_request():
@@ -958,8 +1051,9 @@ def api_admin_approve_request():
     req_id, action = data.get("req_id"), data.get("action")
     with transaction() as db:
         require_admin(db)
-        talep = db["bekleyen_talepler"].get(req_id)
-        if not talep: raise ApiError("Talep bulunamadı.")
+        talep = db.get("bekleyen_talepler", {}).get(req_id)
+        if not talep:
+            raise ApiError("Talep bulunamadı.")
 
         u_email = talep["user_id"]
         user = db["users"].get(u_email)
@@ -982,7 +1076,7 @@ def api_admin_approve_request():
                 }
                 user["bakiye"] = round(user["bakiye"] + talep["tutar"], 2)
                 user["krediler"].append(kredi_obj)
-                add_dekont(db, u_email, "KREDI_CEKIM", talep["tutar"], f"Kredi Onaylandı ({talep['hafta']} Haftalık)")
+                add_dekont(db, u_email, "KREDI_CEKIM", talep["tutar"], f"Kredi Onaylandı ({talep['hafta']} Hafta)")
             elif talep["tur"] == "para_yatirma":
                 user["bakiye"] = round(user["bakiye"] + talep["tutar"], 2)
                 add_dekont(db, u_email, "PARA_YATIRMA", talep["tutar"], f"Dekont: {talep.get('kanit')}")
@@ -991,10 +1085,10 @@ def api_admin_approve_request():
                 add_dekont(db, u_email, "PARA_CEKME", talep["tutar"], f"Nakit Çekim (Komisyon: {talep['komisyon']} TL)")
         elif action == "red":
             if talep["tur"] in ("satin_alim", "para_cekme"):
-                user["bakiye"] = round(user["bakiye"] + talep["toplam"], 2)  # Bloke tutar iade edilir
+                user["bakiye"] = round(user["bakiye"] + talep["toplam"], 2)
 
         del db["bekleyen_talepler"][req_id]
-    return jsonify(status="success", message="Talep işlendi.")
+    return jsonify(status="success", message="Talep sonuçlandırıldı.")
 
 @app.route("/api/admin/verify-user", methods=["POST"])
 def api_admin_verify_user():
@@ -1004,9 +1098,9 @@ def api_admin_verify_user():
         require_admin(db)
         if target in db["users"] and action == "onay":
             db["users"][target]["dogrulandi"] = True
-        if target in db["dogrulama_talepleri"]:
+        if target in db.get("dogrulama_talepleri", {}):
             del db["dogrulama_talepleri"][target]
-    return jsonify(status="success", message="Yüz doğrulaması güncellendi.")
+    return jsonify(status="success", message="Doğrulama durumu güncellendi.")
 
 # --- DOSYA İLE YEDEK İNDİRME VE GERİ YÜKLEME ---
 @app.route("/api/admin/backup", methods=["GET"])
@@ -1024,7 +1118,8 @@ def api_admin_restore():
     db = load_db()
     require_admin(db)
     f = request.files.get("file")
-    if not f: raise ApiError("Dosya seçilmedi.")
+    if not f:
+        raise ApiError("Dosya seçilmedi.")
     try:
         new_db = json.load(f)
         if "users" in new_db and "admin" not in new_db["users"]:
@@ -1032,9 +1127,9 @@ def api_admin_restore():
         normalize_db(new_db, create_admin=True)
         save_db(new_db)
         mark_backup_dirty()
-        return jsonify(status="success", message="🎉 Veritabanı başarıyla geri yüklendi!")
+        return jsonify(status="success", message="Veritabanı başarıyla geri yüklendi.")
     except Exception as e:
-        raise ApiError(f"Hata: {str(e)}")
+        raise ApiError(f"Geri yükleme hatası: {str(e)}")
 
 # --- MATPLOTLIB GRAFİK ENDPOINT'İ ---
 @app.route("/api/admin/grafik", methods=["GET"])
@@ -1048,17 +1143,17 @@ def api_admin_grafik():
     labels = ['Banka Kasasi', 'Dagitilan Krediler', 'Musteri Bakiyeleri']
     sizes = [toplam_kasa, toplam_kredi, toplam_mevduat]
     colors = ['#2ecc71', '#e74c3c', '#3498db']
-    if sum(sizes) == 0: sizes = [1, 1, 1]
+    if sum(sizes) == 0:
+        sizes = [1, 1, 1]
 
-    plt.figure(figsize=(5, 5), facecolor='#1e1e2f')
-    plt.rcParams['text.color'] = 'white'
-    plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=140)
-    plt.title('Merkez Bankasi Varlik Dagilimi', color='white')
+    fig, ax = plt.subplots(figsize=(5, 5), facecolor='#1e1e2f')
+    ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=140, textprops={'color': "white"})
+    ax.set_title('Merkez Bankasi Varlik Dagilimi', color='white')
 
     buffer = io.BytesIO()
-    plt.savefig(buffer, format='png', bbox_inches='tight', transparent=True)
+    fig.savefig(buffer, format='png', bbox_inches='tight', transparent=True)
     buffer.seek(0)
-    plt.close()
+    plt.close(fig)
 
     return Response(buffer.getvalue(), mimetype='image/png')
 
