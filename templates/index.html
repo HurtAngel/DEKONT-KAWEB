@@ -4,18 +4,324 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dekontika - Dijital Bankacılık ve E-Pin</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        body { background-color: #121212; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .card { background-color: #1e1e1e; border: 1px solid #333; }
-        .nav-tabs .nav-link.active { background-color: #2c2c2c; border-color: #333 #333 #2c2c2c; color: #fff; }
-        .nav-tabs .nav-link { color: #aaa; }
-        .toast-container { z-index: 1055; }
+        :root {
+            --bg-deep: #070b14;
+            --bg-surface: rgba(15, 23, 42, 0.78);
+            --bg-elevated: rgba(30, 41, 59, 0.65);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-glow: rgba(59, 130, 246, 0.35);
+            --accent-primary: #3b82f6;
+            --accent-indigo: #6366f1;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-crimson: #ef4444;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            background-image: 
+                radial-gradient(circle at 10% 15%, rgba(59, 130, 246, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 90% 85%, rgba(99, 102, 241, 0.10) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.04) 0%, transparent 60%);
+            background-attachment: fixed;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Özel Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #070b14; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+
         .hidden { display: none !important; }
-        .card-no { font-family: monospace; letter-spacing: 2px; font-size: 1.2rem; }
-        video#webcam { border-radius: 8px; border: 2px solid #555; background-color: #000; }
+        .toast-container { z-index: 1080; }
+
+        /* Glassmorphic Kart Yapısı */
+        .card {
+            background: var(--bg-surface) !important;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-subtle) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.14) !important;
+        }
+
+        .card.border-danger { border-color: rgba(239, 68, 68, 0.45) !important; }
+        .card.border-warning { border-color: rgba(245, 158, 11, 0.45) !important; }
+        .card.border-success { border-color: rgba(16, 185, 129, 0.45) !important; }
+        .card.border-info { border-color: rgba(6, 182, 212, 0.45) !important; }
+
+        /* Form Kontrolleri */
+        .form-control, .form-select {
+            background-color: rgba(9, 13, 24, 0.75) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 12px !important;
+            color: #fff !important;
+            padding: 0.65rem 0.95rem;
+            font-size: 0.92rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: rgba(15, 23, 42, 0.95) !important;
+            border-color: var(--accent-primary) !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+        }
+
+        .form-control::placeholder {
+            color: #64748b !important;
+        }
+
+        .form-label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-dim);
+            margin-bottom: 0.4rem;
+        }
+
+        /* Buton Tasarımları */
+        .btn {
+            border-radius: 12px;
+            font-weight: 600;
+            padding: 0.6rem 1.1rem;
+            letter-spacing: 0.2px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn-sm {
+            border-radius: 9px;
+            padding: 0.38rem 0.75rem;
+            font-size: 0.82rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
+            border: none;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+            background: linear-gradient(135deg, #2563eb 0%, #4338ca 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+        }
+        .btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            border: none;
+            color: #000 !important;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border: none;
+            box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Sanal Kart Özel Görünümü */
+        .virtual-card {
+            background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 55%, #090d16 100%) !important;
+            border: 1px solid rgba(99, 102, 241, 0.35) !important;
+            position: relative;
+            overflow: hidden;
+            border-radius: 20px !important;
+            padding: 1.4rem !important;
+        }
+
+        .virtual-card::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            right: -30%;
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.35) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .card-chip {
+            width: 42px;
+            height: 30px;
+            background: linear-gradient(135deg, #fcd34d 0%, #d97706 100%);
+            border-radius: 6px;
+            position: relative;
+            box-shadow: inset 0 0 4px rgba(0,0,0,0.4);
+        }
+
+        .card-no {
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 2.5px;
+            font-size: 1.22rem;
+            font-weight: 700;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+        }
+
+        #user-iban {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        /* Sekmeler (User & Admin) */
+        .nav-tabs {
+            border-bottom: 1px solid var(--border-subtle);
+            gap: 6px;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 6px;
+            border-radius: 14px;
+        }
+
+        .nav-tabs .nav-link {
+            color: var(--text-dim);
+            border: none !important;
+            border-radius: 10px !important;
+            padding: 0.6rem 1.1rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .nav-tabs .nav-link:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .nav-tabs .nav-link.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%) !important;
+            color: #fff !important;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .nav-pills .nav-link {
+            color: var(--text-dim);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.4rem;
+            font-weight: 600;
+            font-size: 0.92rem;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .nav-pills .nav-link:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+
+        .nav-pills .nav-link.active {
+            background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+            color: #fff !important;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.35);
+        }
+
+        /* Tablolar */
+        .table-dark {
+            --bs-table-bg: transparent;
+            --bs-table-striped-bg: rgba(255, 255, 255, 0.025);
+            border-color: var(--border-subtle);
+            font-size: 0.9rem;
+        }
+
+        .table thead th {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-dim);
+            font-weight: 700;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.85rem 0.75rem;
+        }
+
+        .table tbody td {
+            padding: 0.8rem 0.75rem;
+            vertical-align: middle;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+        }
+
+        /* Navbar */
+        .navbar-glass {
+            background: rgba(9, 13, 24, 0.82) !important;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-subtle) !important;
+            padding: 0.85rem 0;
+        }
+
+        .navbar-admin {
+            background: linear-gradient(90deg, #450a0a 0%, #1e1b4b 100%) !important;
+            border-bottom: 1px solid rgba(239, 68, 68, 0.35) !important;
+            padding: 0.85rem 0;
+        }
+
+        /* Kamera & 144p Çerçeve */
+        video#webcam {
+            border-radius: 14px;
+            border: 2px solid var(--accent-primary);
+            background-color: #000;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Sözleşme Kutusu */
+        .agreement-box {
+            background: rgba(7, 11, 20, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            max-height: 95px;
+            overflow-y: auto;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            line-height: 1.45;
+        }
+
+        /* Loader */
+        #loader {
+            background: rgba(7, 11, 20, 0.88) !important;
+            backdrop-filter: blur(10px);
+        }
+
+        .badge {
+            padding: 0.4em 0.75em;
+            border-radius: 8px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -25,141 +331,235 @@
 
     <!-- Yükleniyor Ekranı -->
     <div id="loader" class="d-flex justify-content-center align-items-center vh-100 position-fixed top-0 start-0 w-100 bg-dark z-3">
-        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+        <div class="text-center">
+            <div class="spinner-border text-primary mb-2" role="status" style="width: 3.2rem; height: 3.2rem; border-width: 0.28em;"></div>
+            <div class="small text-muted fw-semibold">Dekontika Güvenli Bağlantı...</div>
+        </div>
     </div>
 
     <!-- GİRİŞ & KAYIT EKRANI -->
-    <div id="auth-section" class="container vh-100 d-flex justify-content-center align-items-center hidden">
-        <div class="card p-4 shadow-lg" style="width: 400px; max-width: 100%;">
+    <div id="auth-section" class="container min-vh-100 d-flex justify-content-center align-items-center py-4 hidden">
+        <div class="card p-4 p-md-5 shadow-lg" style="width: 460px; max-width: 100%;">
             <div class="text-center mb-4">
-                <h2 class="fw-bold text-primary"><i class="bi bi-bank"></i> Dekontika</h2>
-                <p class="text-muted small">Dijital Bankacılık ve E-Pin Pazarı</p>
+                <div class="d-inline-flex align-items-center justify-content-center rounded-4 mb-3" style="width: 60px; height: 60px; background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(99,102,241,0.2)); border: 1px solid rgba(99,102,241,0.4);">
+                    <i class="bi bi-bank2 fs-2 text-primary"></i>
+                </div>
+                <h2 class="fw-bold text-white mb-1" style="letter-spacing: -0.5px;">Dekontika</h2>
+                <p class="text-muted small mb-0">Merkezi Dijital Bankacılık ve E-Pin Ağı</p>
             </div>
 
             <!-- Login Form -->
             <form id="login-form">
                 <div class="mb-3">
-                    <label class="form-label">E-Posta</label>
-                    <input type="text" id="login-email" class="form-control bg-dark text-white border-secondary" required>
+                    <label class="form-label"><i class="bi bi-envelope me-1"></i> E-Posta</label>
+                    <input type="text" id="login-email" class="form-control bg-dark text-white border-secondary" placeholder="ornek@dekontika.com" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Parola</label>
-                    <input type="password" id="login-password" class="form-control bg-dark text-white border-secondary" required>
+                    <label class="form-label"><i class="bi bi-shield-lock me-1"></i> Parola</label>
+                    <input type="password" id="login-password" class="form-control bg-dark text-white border-secondary" placeholder="••••••••" required>
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
-                <div class="text-center mt-3">
-                    <a href="#" class="text-decoration-none small" onclick="toggleAuth()">Hesabın yok mu? Kayıt Ol</a>
+
+                <!-- Banka Sözleşmesi Özeti & Onay -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small fw-semibold text-secondary" style="font-size: 0.76rem;"><i class="bi bi-file-earmark-lock2 text-warning"></i> MERKEZ BANKASI OTORİTE PROTOKOLÜ</span>
+                        <a href="#" class="small text-info text-decoration-none" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#sozlesmeModal">Tam Metni Oku</a>
+                    </div>
+                    <div class="agreement-box mb-2">
+                        <b>Madde 1 (Mutlak Tasarruf):</b> Dekontika Merkez Bankası; müşteri hesaplarındaki tüm bakiye, kredi ve E-Pin varlıkları üzerinde mutlak denetim, gerekçesiz dondurma ve kasaya irat kaydetme (müsadere) yetkisine sahiptir.<br>
+                        <b>Madde 2 (Komisyon & Faiz):</b> Havale, hızlı ödeme, nakit çekim ve pazar payı kesinti oranları Merkez Bankası tarafından tek taraflı belirlenir.
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="login-contract-check" required>
+                        <label class="form-check-label small text-light" for="login-contract-check" style="font-size: 0.8rem;">
+                            <a href="#" class="text-primary text-decoration-underline" data-bs-toggle="modal" data-bs-target="#sozlesmeModal">Bankacılık İtaat ve Varlık Sözleşmesini</a> okudum, tüm üstün yetkileri kabul ediyorum.
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 py-2"><i class="bi bi-box-arrow-in-right me-1"></i> Güvenli Giriş Yap</button>
+                <div class="text-center mt-3 pt-2 border-top border-secondary border-opacity-25">
+                    <a href="#" class="text-decoration-none small text-info fw-medium" onclick="toggleAuth()">Hesabın yok mu? <span class="text-white">Yeni Hesap Aç</span></a>
                 </div>
             </form>
 
             <!-- Register Form -->
             <form id="register-form" class="hidden">
                 <div class="mb-3">
-                    <label class="form-label">Ad Soyad</label>
-                    <input type="text" id="reg-name" class="form-control bg-dark text-white border-secondary" required>
+                    <label class="form-label"><i class="bi bi-person-badge me-1"></i> Ad Soyad</label>
+                    <input type="text" id="reg-name" class="form-control bg-dark text-white border-secondary" placeholder="Adınız Soyadınız" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">E-Posta</label>
-                    <input type="email" id="reg-email" class="form-control bg-dark text-white border-secondary" required>
+                    <label class="form-label"><i class="bi bi-envelope me-1"></i> E-Posta</label>
+                    <input type="email" id="reg-email" class="form-control bg-dark text-white border-secondary" placeholder="ornek@dekontika.com" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Parola</label>
-                    <input type="password" id="reg-password" class="form-control bg-dark text-white border-secondary" required>
+                    <label class="form-label"><i class="bi bi-key me-1"></i> Parola</label>
+                    <input type="password" id="reg-password" class="form-control bg-dark text-white border-secondary" placeholder="Güçlü bir parola belirleyin" required>
                 </div>
-                <button type="submit" class="btn btn-success w-100">Kayıt Ol</button>
-                <div class="text-center mt-3">
-                    <a href="#" class="text-decoration-none small" onclick="toggleAuth()">Zaten hesabın var mı? Giriş Yap</a>
+
+                <!-- Banka Sözleşmesi Özeti & Onay -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small fw-semibold text-secondary" style="font-size: 0.76rem;"><i class="bi bi-file-earmark-lock2 text-warning"></i> HESAP AÇILIŞ & YETKİ DEVRİ SÖZLEŞMESİ</span>
+                        <a href="#" class="small text-info text-decoration-none" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#sozlesmeModal">Tam Metni Oku</a>
+                    </div>
+                    <div class="agreement-box mb-2">
+                        <b>Madde 1 (Tam Yetki Devri):</b> Hesap sahibi, Dekontika Merkez Bankası Müfettiş Kurulu'nun tüm fon kaynaklarını inceleme, hesabı askıya alma ve bakiyeye el koyma yetkisini peşinen kabul eder.<br>
+                        <b>Madde 2 (Biyometrik Onay):</b> Hesap limitlerinin kaldırılması için 144p optik yüz doğrulaması şarttır ve onay yetkisi münhasıran Bankaya aittir.
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="reg-contract-check" required>
+                        <label class="form-check-label small text-light" for="reg-contract-check" style="font-size: 0.8rem;">
+                            <a href="#" class="text-success text-decoration-underline" data-bs-toggle="modal" data-bs-target="#sozlesmeModal">Merkez Bankası Egemenlik Sözleşmesini</a> kayıtsız şartsız kabul ediyorum.
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success w-100 py-2"><i class="bi bi-person-plus me-1"></i> Sözleşmeyi Onayla ve Kayıt Ol</button>
+                <div class="text-center mt-3 pt-2 border-top border-secondary border-opacity-25">
+                    <a href="#" class="text-decoration-none small text-info fw-medium" onclick="toggleAuth()">Zaten hesabın var mı? <span class="text-white">Giriş Yap</span></a>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- KULLANICI PANELİ -->
-    <div id="user-section" class="hidden">
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
+    <div id="user-section" class="hidden pb-5">
+        <nav class="navbar navbar-expand-lg navbar-dark navbar-glass sticky-top">
             <div class="container">
-                <a class="navbar-brand fw-bold text-primary" href="#"><i class="bi bi-bank"></i> Dekontika</a>
-                <div class="d-flex align-items-center">
-                    <span class="me-3 text-light" id="nav-user-name"></span>
-                    <button class="btn btn-sm btn-outline-danger" onclick="logout()">Çıkış Yap</button>
+                <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="#">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-25 text-primary" style="width: 36px; height: 36px;">
+                        <i class="bi bi-bank2"></i>
+                    </span>
+                    <span class="text-white">Dekontika</span>
+                </a>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="px-3 py-1 rounded-pill bg-slate-800 border border-secondary border-opacity-25 d-flex align-items-center gap-2">
+                        <i class="bi bi-person-circle text-primary"></i>
+                        <span class="text-light small fw-semibold" id="nav-user-name"></span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1" onclick="logout()">
+                        <i class="bi bi-power"></i> <span>Çıkış Yap</span>
+                    </button>
                 </div>
             </div>
         </nav>
 
         <div class="container mt-4">
-            <div class="row">
+            <div class="row g-4">
                 <!-- Sol Taraf: Profil & Kart -->
-                <div class="col-md-4 mb-4">
-                    <div class="card p-3 mb-3 shadow">
-                        <h5 class="text-muted mb-1">Kullanılabilir Bakiye</h5>
-                        <h2 class="text-success fw-bold"><span id="user-bakiye">0.00</span> TL</h2>
-                        <hr class="border-secondary">
-                        <p class="mb-1 small text-muted">Kredi Notu: <span id="user-kredinotu" class="text-light"></span></p>
-                        <p class="mb-1 small text-muted">Durum: <span id="user-durum" class="badge bg-info"></span></p>
-                        <p class="mb-0 small text-muted">Hesap Tipi: <span id="user-tipi" class="badge bg-secondary">Bireysel</span></p>
+                <div class="col-lg-4">
+                    <!-- Bakiye Kartı -->
+                    <div class="card p-4 mb-3 shadow">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <span class="text-muted small fw-semibold text-uppercase" style="letter-spacing: 0.6px;">Kullanılabilir Bakiye</span>
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25"><i class="bi bi-shield-check me-1"></i>Aktif Kasa</span>
+                        </div>
+                        <h2 class="text-success fw-bold display-6 mb-3" style="font-family: 'JetBrains Mono', monospace;"><span id="user-bakiye">0.00</span> <small class="fs-5">TL</small></h2>
+                        
+                        <div class="p-3 rounded-3" style="background: rgba(7, 11, 20, 0.55); border: 1px solid rgba(255,255,255,0.05);">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small text-muted"><i class="bi bi-speedometer2 me-1"></i>Kredi Notu</span>
+                                <span id="user-kredinotu" class="fw-bold text-light font-monospace"></span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small text-muted"><i class="bi bi-activity me-1"></i>Hesap Durumu</span>
+                                <span id="user-durum" class="badge bg-info text-dark"></span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="small text-muted"><i class="bi bi-award me-1"></i>Hesap Statüsü</span>
+                                <span id="user-tipi" class="badge bg-secondary">Bireysel</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="card p-3 shadow" style="background: linear-gradient(135deg, #2c3e50, #000000);">
-                        <h6 class="text-light opacity-75">Sanal Kart</h6>
-                        <div class="card-no mt-2 mb-3 text-white" id="user-cardno">**** **** **** ****</div>
-                        <div class="d-flex justify-content-between text-light small opacity-75">
-                            <span>SKT: <span id="user-skt"></span></span>
-                            <span>CVV: <span id="user-cvv"></span></span>
+                    <!-- Sanal Kart -->
+                    <div class="card virtual-card shadow mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <span class="badge bg-primary bg-opacity-25 text-info border border-info border-opacity-25 mb-1">DEKONTİKA PLATINUM</span>
+                                <h6 class="text-light opacity-75 small mb-0">Dijital Sanal Kart</h6>
+                            </div>
+                            <i class="bi bi-wifi fs-4 text-light opacity-75" style="transform: rotate(90deg);"></i>
+                        </div>
+                        <div class="card-chip mb-3"></div>
+                        <div class="card-no mt-1 mb-3 text-white" id="user-cardno">**** **** **** ****</div>
+                        <div class="d-flex justify-content-between align-items-center text-light small pt-2 border-top border-light border-opacity-10">
+                            <span class="font-monospace">SKT: <strong id="user-skt" class="text-info"></strong></span>
+                            <span class="font-monospace">CVV: <strong id="user-cvv" class="text-warning"></strong></span>
+                            <i class="bi bi-credit-card-2-front fs-5 opacity-75"></i>
                         </div>
                     </div>
                     
-                    <div class="card p-3 mt-3 shadow">
-                        <p class="mb-1 small text-muted">IBAN:</p>
+                    <!-- IBAN Kutusu -->
+                    <div class="card p-3 shadow">
+                        <label class="form-label mb-1"><i class="bi bi-upc-scan me-1 text-info"></i> Hesap IBAN Numarası</label>
                         <div class="input-group input-group-sm">
-                            <input type="text" class="form-control bg-dark text-info" id="user-iban" readonly>
-                            <button class="btn btn-outline-secondary" onclick="copyToClipboard('user-iban')"><i class="bi bi-clipboard"></i></button>
+                            <input type="text" class="form-control bg-dark text-info fw-semibold" id="user-iban" readonly>
+                            <button class="btn btn-outline-secondary px-3" onclick="copyToClipboard('user-iban')" title="Kopyala">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Sağ Taraf: Sekmeler -->
-                <div class="col-md-8">
-                    <ul class="nav nav-tabs mb-3" id="userTabs">
-                        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-banka">Bankacılık</a></li>
-                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-kredi">Krediler</a></li>
-                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-epin">E-Pin Market</a></li>
-                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-dekont">Dekontlar</a></li>
-                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-ayarlar">Hesap/Doğrulama</a></li>
+                <div class="col-lg-8">
+                    <ul class="nav nav-tabs mb-4" id="userTabs">
+                        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-banka"><i class="bi bi-arrow-left-right me-1"></i>Bankacılık</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-kredi"><i class="bi bi-cash-coin me-1"></i>Krediler</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-epin"><i class="bi bi-controller me-1"></i>E-Pin Market</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-dekont"><i class="bi bi-receipt-cutoff me-1"></i>Dekontlar</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-ayarlar"><i class="bi bi-person-check me-1"></i>Hesap/Doğrulama</a></li>
                     </ul>
 
                     <div class="tab-content">
                         <!-- Bankacılık -->
                         <div class="tab-pane fade show active" id="tab-banka">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <div class="card p-3">
-                                        <h5>Para Transferi (Havale)</h5>
-                                        <input type="text" id="havale-iban" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Alıcı IBAN">
-                                        <input type="number" id="havale-tutar" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Tutar (TL)">
-                                        <button class="btn btn-primary w-100" onclick="islemYap('havale')">Gönder</button>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="card p-4 h-100">
+                                        <div class="d-flex align-items-center gap-2 mb-3">
+                                            <span class="p-2 rounded-3 bg-primary bg-opacity-10 text-primary"><i class="bi bi-send-fill fs-5"></i></span>
+                                            <h5 class="mb-0 fw-bold">Para Transferi (Havale)</h5>
+                                        </div>
+                                        <input type="text" id="havale-iban" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Alıcı IBAN (TR...)">
+                                        <input type="number" id="havale-tutar" class="form-control bg-dark text-white border-secondary mb-3" placeholder="Tutar (TL)">
+                                        <button class="btn btn-primary w-100 mt-auto" onclick="islemYap('havale')"><i class="bi bi-arrow-right-circle me-1"></i> Gönder</button>
                                     </div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <div class="card p-3">
-                                        <h5>Para Çek</h5>
-                                        <input type="number" id="cek-tutar" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Tutar (TL)">
-                                        <button class="btn btn-warning w-100" onclick="islemYap('para-cek')">Talep Et</button>
+                                <div class="col-md-6">
+                                    <div class="card p-4 h-100">
+                                        <div class="d-flex align-items-center gap-2 mb-3">
+                                            <span class="p-2 rounded-3 bg-warning bg-opacity-10 text-warning"><i class="bi bi-cash-stack fs-5"></i></span>
+                                            <h5 class="mb-0 fw-bold">Para Çek</h5>
+                                        </div>
+                                        <p class="small text-muted mb-2">Merkez Bankası onayıyla nakit çıkış talebi oluşturun.</p>
+                                        <input type="number" id="cek-tutar" class="form-control bg-dark text-white border-secondary mb-3" placeholder="Tutar (TL)">
+                                        <button class="btn btn-warning w-100 mt-auto" onclick="islemYap('para-cek')"><i class="bi bi-box-arrow-up me-1"></i> Talep Et</button>
                                     </div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <div class="card p-3">
-                                        <h5>Para Yatır</h5>
+                                <div class="col-md-6">
+                                    <div class="card p-4 h-100">
+                                        <div class="d-flex align-items-center gap-2 mb-3">
+                                            <span class="p-2 rounded-3 bg-success bg-opacity-10 text-success"><i class="bi bi-wallet2 fs-5"></i></span>
+                                            <h5 class="mb-0 fw-bold">Para Yatır</h5>
+                                        </div>
                                         <input type="number" id="yatir-tutar" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Tutar (TL)">
-                                        <input type="text" id="yatir-kanit" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Açıklama / Dekont Notu">
-                                        <button class="btn btn-success w-100" onclick="islemYap('para-yatir')">Talep Et</button>
+                                        <input type="text" id="yatir-kanit" class="form-control bg-dark text-white border-secondary mb-3" placeholder="Açıklama / Dekont Notu">
+                                        <button class="btn btn-success w-100 mt-auto" onclick="islemYap('para-yatir')"><i class="bi bi-plus-circle me-1"></i> Talep Et</button>
                                     </div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <div class="card p-3">
-                                        <h5>Hızlı Ödeme (Komisyonlu)</h5>
+                                <div class="col-md-6">
+                                    <div class="card p-4 h-100">
+                                        <div class="d-flex align-items-center gap-2 mb-3">
+                                            <span class="p-2 rounded-3 bg-danger bg-opacity-10 text-danger"><i class="bi bi-lightning-charge-fill fs-5"></i></span>
+                                            <h5 class="mb-0 fw-bold">Hızlı Ödeme (Komisyonlu)</h5>
+                                        </div>
                                         <input type="number" id="odeme-tutar" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Tutar (TL)">
-                                        <input type="text" id="odeme-aciklama" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Açıklama / Fatura No">
-                                        <button class="btn btn-danger w-100" onclick="islemYap('odeme')">Öde</button>
+                                        <input type="text" id="odeme-aciklama" class="form-control bg-dark text-white border-secondary mb-3" placeholder="Açıklama / Fatura No">
+                                        <button class="btn btn-danger w-100 mt-auto" onclick="islemYap('odeme')"><i class="bi bi-credit-card me-1"></i> Öde</button>
                                     </div>
                                 </div>
                             </div>
@@ -167,98 +567,106 @@
 
                         <!-- Krediler -->
                         <div class="tab-pane fade" id="tab-kredi">
-                            <div class="card p-3 mb-3">
-                                <h5>Yeni Kredi Başvurusu</h5>
-                                <div class="d-flex gap-2">
-                                    <input type="number" id="kredi-tutar" class="form-control bg-dark text-white border-secondary" placeholder="Tutar (TL)">
-                                    <select id="kredi-hafta" class="form-select bg-dark text-white border-secondary">
-                                        <option value="3">3 Hafta</option>
-                                        <option value="6">6 Hafta</option>
-                                        <option value="12">12 Hafta</option>
+                            <div class="card p-4 mb-4">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-bank me-2 text-primary"></i>Yeni Kredi Başvurusu</h5>
+                                <div class="d-flex flex-column flex-sm-row gap-2">
+                                    <input type="number" id="kredi-tutar" class="form-control bg-dark text-white border-secondary" placeholder="Talep Edilen Tutar (TL)">
+                                    <select id="kredi-hafta" class="form-select bg-dark text-white border-secondary" style="max-width: 180px;">
+                                        <option value="3">3 Hafta Vade</option>
+                                        <option value="6">6 Hafta Vade</option>
+                                        <option value="12">12 Hafta Vade</option>
                                     </select>
-                                    <button class="btn btn-primary" onclick="islemYap('kredi-cek')">Başvur</button>
+                                    <button class="btn btn-primary px-4" onclick="islemYap('kredi-cek')">Başvur</button>
                                 </div>
                             </div>
-                            <h5>Aktif Kredilerim</h5>
+                            <h5 class="fw-bold mb-3"><i class="bi bi-clock-history me-2 text-warning"></i>Aktif Kredilerim</h5>
                             <div id="krediler-list"></div>
                         </div>
 
                         <!-- E-Pin Market -->
                         <div class="tab-pane fade" id="tab-epin">
-                            <div id="epin-satis-panel" class="card p-3 mb-3 border-warning hidden">
-                                <h5><i class="bi bi-shop"></i> E-Pin Satışı Ekle (İş Hesabı)</h5>
-                                <div class="row">
-                                    <div class="col-md-4 mb-2">
+                            <div id="epin-satis-panel" class="card p-4 mb-4 border-warning hidden">
+                                <h5 class="fw-bold text-warning mb-3"><i class="bi bi-shop me-2"></i>E-Pin Satışı Ekle (İş Hesabı)</h5>
+                                <div class="row g-2">
+                                    <div class="col-md-4">
                                         <input type="text" id="epin-baslik" class="form-control bg-dark text-white border-secondary" placeholder="Ürün Adı">
                                     </div>
-                                    <div class="col-md-4 mb-2">
+                                    <div class="col-md-4">
                                         <input type="number" id="epin-fiyat" class="form-control bg-dark text-white border-secondary" placeholder="Fiyat (TL)">
                                     </div>
-                                    <div class="col-md-4 mb-2">
-                                        <button class="btn btn-warning w-100" onclick="epinEkle()">Markete Koy</button>
+                                    <div class="col-md-4">
+                                        <button class="btn btn-warning w-100" onclick="epinEkle()"><i class="bi bi-plus-lg me-1"></i>Markete Koy</button>
                                     </div>
-                                    <div class="col-12">
+                                    <div class="col-12 mt-2">
                                         <textarea id="epin-kodlar" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Her satıra bir kod gelecek şekilde kodları yapıştırın."></textarea>
                                     </div>
                                 </div>
                             </div>
-                            <h5>Market <small class="text-muted">(Sanal Kart Bilgilerinizle Alınır)</small></h5>
-                            <div class="row" id="market-list"></div>
+
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold mb-0"><i class="bi bi-bag-check me-2 text-info"></i>Dijital E-Pin Market</h5>
+                                <span class="badge bg-dark border border-secondary text-muted">Sanal Kart ile Anında Teslimat</span>
+                            </div>
+                            <div class="row g-3" id="market-list"></div>
                             
-                            <h5 class="mt-4">Aldığım Kodlar</h5>
-                            <div class="table-responsive">
-                                <table class="table table-dark table-sm">
-                                    <thead><tr><th>Tarih</th><th>Ürün</th><th>Kod</th><th>Fiyat</th><th>Satıcı</th></tr></thead>
-                                    <tbody id="aldigim-kodlar-list"></tbody>
-                                </table>
+                            <div class="card p-4 mt-4">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-key-fill me-2 text-success"></i>Aldığım Kodlar</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-sm align-middle mb-0">
+                                        <thead><tr><th>Tarih</th><th>Ürün</th><th>Kod</th><th>Fiyat</th><th>Satıcı</th></tr></thead>
+                                        <tbody id="aldigim-kodlar-list"></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Dekontlar -->
                         <div class="tab-pane fade" id="tab-dekont">
-                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                                <table class="table table-dark table-striped table-sm">
-                                    <thead class="sticky-top bg-dark">
-                                        <tr><th>Tarih</th><th>Dekont No</th><th>Tür</th><th>Tutar</th><th>Açıklama</th></tr>
-                                    </thead>
-                                    <tbody id="dekont-list"></tbody>
-                                </table>
+                            <div class="card p-3">
+                                <div class="table-responsive" style="max-height: 450px; overflow-y: auto;">
+                                    <table class="table table-dark table-striped table-sm align-middle mb-0">
+                                        <thead class="sticky-top bg-dark">
+                                            <tr><th>Tarih</th><th>Dekont No</th><th>Tür</th><th>Tutar</th><th>Açıklama</th></tr>
+                                        </thead>
+                                        <tbody id="dekont-list"></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Ayarlar & Kamera ile 144p Selfie Doğrulama -->
                         <div class="tab-pane fade" id="tab-ayarlar">
-                            <div class="card p-3 mb-3 border-danger" id="dogrulama-panel">
-                                <h5><i class="bi bi-person-bounding-box"></i> Kimlik / 144p Canlı Yüz Doğrulaması</h5>
-                                <p class="small text-muted mb-2">Havale limitlerini kaldırmak ve E-Pin alabilmek için kameradan selfie çekin.</p>
+                            <div class="card p-4 mb-3 border-danger" id="dogrulama-panel">
+                                <h5 class="fw-bold text-danger"><i class="bi bi-person-bounding-box me-2"></i>Kimlik / 144p Canlı Yüz Doğrulaması</h5>
+                                <p class="small text-muted mb-3">Havale limitlerini kaldırmak ve E-Pin alabilmek için kameradan selfie çekin.</p>
                                 
                                 <!-- Canlı Kamera Alanı -->
-                                <div id="camera-container" class="text-center mb-2 hidden">
+                                <div id="camera-container" class="text-center mb-3 hidden">
                                     <video id="webcam" autoplay playsinline style="width: 100%; max-width: 320px; height: 180px; object-fit: cover;"></video>
                                     <canvas id="snap-canvas" width="256" height="144" class="hidden"></canvas>
                                 </div>
 
-                                <div class="d-flex gap-2 mb-2">
-                                    <button class="btn btn-outline-info w-50" id="btn-open-cam" onclick="openCamera()"><i class="bi bi-camera-video"></i> Kamerayı Başlat</button>
-                                    <button class="btn btn-danger w-50 hidden" id="btn-snap" onclick="takeSelfie()"><i class="bi bi-camera"></i> 144p Fotoğraf Çek</button>
+                                <div class="d-flex gap-2 mb-3">
+                                    <button class="btn btn-outline-info w-50" id="btn-open-cam" onclick="openCamera()"><i class="bi bi-camera-video me-1"></i> Kamerayı Başlat</button>
+                                    <button class="btn btn-danger w-50 hidden" id="btn-snap" onclick="takeSelfie()"><i class="bi bi-camera me-1"></i> 144p Fotoğraf Çek</button>
                                 </div>
 
                                 <!-- Dosyadan Seçme (Yine Otomatik 144p Downscale Edilir) -->
-                                <div class="mt-2 pt-2 border-top border-secondary">
+                                <div class="mt-2 pt-3 border-top border-secondary border-opacity-25">
                                     <label class="form-label small text-muted">Veya Cihazdan Resim Seçin (Otomatik 144p yapılır):</label>
-                                    <input type="file" id="selfie-file" accept="image/*" class="form-control form-control-sm bg-dark text-white border-secondary mb-2" onchange="handleFileSelect(event)">
+                                    <input type="file" id="selfie-file" accept="image/*" class="form-control form-control-sm bg-dark text-white border-secondary" onchange="handleFileSelect(event)">
                                 </div>
                             </div>
                             
-                            <div class="card p-3 mb-3 border-warning" id="is-hesabi-panel">
-                                <h5>İş Hesabı Başvurusu</h5>
-                                <p class="small text-muted mb-2">Para çekiminde %0 komisyon ve E-Pin Markette satış yapabilme yetkisi verir.</p>
-                                <button class="btn btn-warning" onclick="requestBusiness()">İş Hesabı Talep Et</button>
+                            <div class="card p-4 mb-3 border-warning" id="is-hesabi-panel">
+                                <h5 class="fw-bold text-warning"><i class="bi bi-briefcase-fill me-2"></i>İş Hesabı Başvurusu</h5>
+                                <p class="small text-muted mb-3">Para çekiminde %0 komisyon ve E-Pin Markette satış yapabilme yetkisi verir.</p>
+                                <button class="btn btn-warning" onclick="requestBusiness()"><i class="bi bi-Patch-check me-1"></i>İş Hesabı Talep Et</button>
                             </div>
                             
-                            <div class="card p-3">
-                                <h5>Bekleyen Taleplerim</h5>
-                                <ul class="list-group list-group-flush bg-dark" id="bekleyen-user-list"></ul>
+                            <div class="card p-4">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-hourglass-split me-2 text-info"></i>Bekleyen Taleplerim</h5>
+                                <ul class="list-group list-group-flush bg-dark rounded-3 overflow-hidden" id="bekleyen-user-list"></ul>
                             </div>
                         </div>
                     </div>
@@ -268,53 +676,60 @@
     </div>
 
     <!-- ADMIN PANELİ -->
-    <div id="admin-section" class="hidden">
-        <nav class="navbar navbar-expand-lg navbar-dark bg-danger border-bottom border-dark">
-            <div class="container-fluid">
-                <a class="navbar-brand fw-bold" href="#"><i class="bi bi-shield-lock"></i> Merkez Bankası (Admin)</a>
-                <div class="d-flex align-items-center">
-                    <a href="/api/admin/backup" class="btn btn-sm btn-dark me-2"><i class="bi bi-download"></i> Yedek İndir</a>
+    <div id="admin-section" class="hidden pb-5">
+        <nav class="navbar navbar-expand-lg navbar-dark navbar-admin sticky-top">
+            <div class="container-fluid px-4">
+                <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="#">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-3 bg-danger text-white" style="width: 36px; height: 36px;">
+                        <i class="bi bi-shield-lock-fill"></i>
+                    </span>
+                    <span>Merkez Bankası <small class="badge bg-danger ms-1">YÖNETİM & TEFTİŞ</small></span>
+                </a>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="/api/admin/backup" class="btn btn-sm btn-dark border border-secondary"><i class="bi bi-download me-1"></i> Yedek İndir</a>
                     <input type="file" id="adm-restore-file" accept=".json" class="d-none" onchange="admRestoreDb(event)">
-                    <button class="btn btn-sm btn-outline-light me-2" onclick="document.getElementById('adm-restore-file').click()">
-                        <i class="bi bi-upload"></i> Yedek Yükle
+                    <button class="btn btn-sm btn-outline-light" onclick="document.getElementById('adm-restore-file').click()">
+                        <i class="bi bi-upload me-1"></i> Yedek Yükle
                     </button>
-                    <button class="btn btn-sm btn-outline-light" onclick="logout()">Çıkış Yap</button>
+                    <button class="btn btn-sm btn-danger" onclick="logout()"><i class="bi bi-power me-1"></i> Çıkış Yap</button>
                 </div>
             </div>
         </nav>
 
-        <div class="container-fluid mt-3">
-            <div class="row">
-                <div class="col-md-2">
-                    <div class="nav flex-column nav-pills" id="adminTabs">
-                        <a class="nav-link active" data-bs-toggle="pill" href="#adm-genel">Genel Bakış</a>
-                        <a class="nav-link" data-bs-toggle="pill" href="#adm-onaylar">Onay Bekleyenler</a>
-                        <a class="nav-link" data-bs-toggle="pill" href="#adm-kullanicilar">Müşteriler / Müfettiş</a>
-                        <a class="nav-link" data-bs-toggle="pill" href="#adm-epin">E-Pin Yönetimi</a>
-                        <a class="nav-link" data-bs-toggle="pill" href="#adm-ayarlar">Sistem Ayarları</a>
+        <div class="container-fluid px-4 mt-4">
+            <div class="row g-4">
+                <div class="col-lg-2">
+                    <div class="card p-2">
+                        <div class="nav flex-column nav-pills" id="adminTabs">
+                            <a class="nav-link active" data-bs-toggle="pill" href="#adm-genel"><i class="bi bi-pie-chart-fill me-2"></i>Genel Bakış</a>
+                            <a class="nav-link" data-bs-toggle="pill" href="#adm-onaylar"><i class="bi bi-check2-square me-2"></i>Onay Bekleyenler</a>
+                            <a class="nav-link" data-bs-toggle="pill" href="#adm-kullanicilar"><i class="bi bi-people-fill me-2"></i>Müşteriler / Müfettiş</a>
+                            <a class="nav-link" data-bs-toggle="pill" href="#adm-epin"><i class="bi bi-box-seam-fill me-2"></i>E-Pin Yönetimi</a>
+                            <a class="nav-link" data-bs-toggle="pill" href="#adm-ayarlar"><i class="bi bi-sliders me-2"></i>Sistem Ayarları</a>
+                        </div>
                     </div>
                 </div>
-                <div class="col-md-10">
+                <div class="col-lg-10">
                     <div class="tab-content">
                         <!-- Genel Bakış (Dolaşımdaki Para Sayaçlı) -->
                         <div class="tab-pane fade show active" id="adm-genel">
-                            <div class="row">
-                                <div class="col-md-3 mb-3">
-                                    <div class="card p-3 text-center border-success">
-                                        <h5>Banka Kasası</h5>
-                                        <h2 class="text-success fw-bold"><span id="adm-kasa">0</span> TL</h2>
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <div class="card p-4 text-center border-success h-100 d-flex flex-column justify-content-center">
+                                        <span class="text-muted small text-uppercase fw-bold mb-2">Merkez Bankası Kasası</span>
+                                        <h2 class="text-success fw-bold font-monospace mb-0"><span id="adm-kasa">0</span> TL</h2>
                                     </div>
                                 </div>
-                                <div class="col-md-3 mb-3">
-                                    <div class="card p-3 text-center border-info">
-                                        <h5>Piyasadaki Para</h5>
-                                        <h2 class="text-info fw-bold"><span id="adm-dolasim">0</span> TL</h2>
+                                <div class="col-md-3">
+                                    <div class="card p-4 text-center border-info h-100 d-flex flex-column justify-content-center">
+                                        <span class="text-muted small text-uppercase fw-bold mb-2">Piyasadaki Para (Dolaşım)</span>
+                                        <h2 class="text-info fw-bold font-monospace mb-0"><span id="adm-dolasim">0</span> TL</h2>
                                     </div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <div class="card p-3 text-center">
-                                        <h5>Varlık Dağılımı</h5>
-                                        <img id="adm-grafik" src="" alt="Grafik Yükleniyor" class="img-fluid" style="max-height: 250px; object-fit: contain;">
+                                <div class="col-md-6">
+                                    <div class="card p-4 text-center h-100">
+                                        <h6 class="text-muted text-uppercase fw-bold mb-3">Makroekonomik Varlık Dağılımı</h6>
+                                        <img id="adm-grafik" src="" alt="Grafik Yükleniyor" class="img-fluid rounded-3 mx-auto" style="max-height: 250px; object-fit: contain;">
                                     </div>
                                 </div>
                             </div>
@@ -322,85 +737,98 @@
 
                         <!-- Onay Bekleyenler -->
                         <div class="tab-pane fade" id="adm-onaylar">
-                            <div class="row">
+                            <div class="row g-3">
                                 <div class="col-md-4">
-                                    <h5>Finansal Talepler</h5>
-                                    <div id="adm-bekleyen-list"></div>
+                                    <div class="card p-3 h-100">
+                                        <h5 class="fw-bold mb-3 text-info"><i class="bi bi-cash-coin me-2"></i>Finansal Talepler</h5>
+                                        <div id="adm-bekleyen-list"></div>
+                                    </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <h5>Doğrulama Talepleri (Selfie)</h5>
-                                    <div id="adm-dogrulama-list"></div>
+                                    <div class="card p-3 h-100">
+                                        <h5 class="fw-bold mb-3 text-danger"><i class="bi bi-camera-fill me-2"></i>Doğrulama Talepleri (Selfie)</h5>
+                                        <div id="adm-dogrulama-list"></div>
+                                    </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <h5>İş Hesabı Talepleri</h5>
-                                    <div id="adm-is-hesabi-list"></div>
+                                    <div class="card p-3 h-100">
+                                        <h5 class="fw-bold mb-3 text-warning"><i class="bi bi-building-check me-2"></i>İş Hesabı Talepleri</h5>
+                                        <div id="adm-is-hesabi-list"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Kullanıcılar & Müfettiş Denetimi (El Koy, Doğrula, İncele) -->
                         <div class="tab-pane fade" id="adm-kullanicilar">
-                            <div class="table-responsive">
-                                <table class="table table-dark table-striped table-sm text-center align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>E-Posta</th>
-                                            <th>Ad Soyad</th>
-                                            <th>Bakiye</th>
-                                            <th>Durum</th>
-                                            <th>Doğrulama</th>
-                                            <th>İş Hesabı</th>
-                                            <th>Müfettiş & Hızlı İşlemler</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="adm-users-list"></tbody>
-                                </table>
+                            <div class="card p-3">
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-striped table-sm text-center align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>E-Posta</th>
+                                                <th>Ad Soyad</th>
+                                                <th>Bakiye</th>
+                                                <th>Durum</th>
+                                                <th>Doğrulama</th>
+                                                <th>İş Hesabı</th>
+                                                <th>Müfettiş & Hızlı İşlemler</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="adm-users-list"></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
                         <!-- E-Pin Yönetimi -->
                         <div class="tab-pane fade" id="adm-epin">
-                            <div class="card p-3 border-danger mb-3">
-                                <h5>Merkezden Ürün Ekle</h5>
-                                <div class="row">
-                                    <div class="col-md-3 mb-2"><input type="text" id="adm-epin-baslik" class="form-control bg-dark text-white border-secondary" placeholder="Başlık"></div>
-                                    <div class="col-md-3 mb-2"><input type="number" id="adm-epin-fiyat" class="form-control bg-dark text-white border-secondary" placeholder="Fiyat (TL)"></div>
-                                    <div class="col-md-3 mb-2"><input type="text" id="adm-epin-satici" class="form-control bg-dark text-white border-secondary" placeholder="Satıcı (admin veya email)" value="admin"></div>
-                                    <div class="col-md-3 mb-2"><button class="btn btn-danger w-100" onclick="admEpinEkle()">Ekle</button></div>
-                                    <div class="col-12"><textarea id="adm-epin-kodlar" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Kodlar (Satır satır)"></textarea></div>
+                            <div class="card p-4 border-danger mb-4">
+                                <h5 class="fw-bold text-danger mb-3"><i class="bi bi-plus-square-fill me-2"></i>Merkezden Ürün Ekle</h5>
+                                <div class="row g-2">
+                                    <div class="col-md-3"><input type="text" id="adm-epin-baslik" class="form-control bg-dark text-white border-secondary" placeholder="Başlık"></div>
+                                    <div class="col-md-3"><input type="number" id="adm-epin-fiyat" class="form-control bg-dark text-white border-secondary" placeholder="Fiyat (TL)"></div>
+                                    <div class="col-md-3"><input type="text" id="adm-epin-satici" class="form-control bg-dark text-white border-secondary" placeholder="Satıcı (admin veya email)" value="admin"></div>
+                                    <div class="col-md-3"><button class="btn btn-danger w-100" onclick="admEpinEkle()">Ekle</button></div>
+                                    <div class="col-12 mt-2"><textarea id="adm-epin-kodlar" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Kodlar (Satır satır)"></textarea></div>
                                 </div>
                             </div>
-                            <h5>Sistemdeki Tüm Ürünler</h5>
-                            <table class="table table-dark table-sm">
-                                <thead><tr><th>ID</th><th>Başlık</th><th>Fiyat</th><th>Satıcı</th><th>Stok</th><th>İşlem</th></tr></thead>
-                                <tbody id="adm-epin-list"></tbody>
-                            </table>
+                            <div class="card p-4">
+                                <h5 class="fw-bold mb-3">Sistemdeki Tüm Ürünler</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-sm align-middle mb-0">
+                                        <thead><tr><th>ID</th><th>Başlık</th><th>Fiyat</th><th>Satıcı</th><th>Stok</th><th>İşlem</th></tr></thead>
+                                        <tbody id="adm-epin-list"></tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Sistem Ayarları -->
                         <div class="tab-pane fade" id="adm-ayarlar">
-                            <div class="card p-3" style="max-width: 500px;">
-                                <div class="mb-2">
-                                    <label>Ödeme Komisyonu (Örn: 0.60)</label>
+                            <div class="card p-4" style="max-width: 540px;">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-gear-wide-connected me-2 text-primary"></i>Merkez Bankası Para Politikası & Komisyonlar</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">Ödeme Komisyonu (Örn: 0.60)</label>
                                     <input type="number" step="0.01" id="set-kom-odeme" class="form-control bg-dark text-white">
                                 </div>
-                                <div class="mb-2">
-                                    <label>Çekim Komisyonu (Örn: 0.10)</label>
+                                <div class="mb-3">
+                                    <label class="form-label">Çekim Komisyonu (Örn: 0.10)</label>
                                     <input type="number" step="0.01" id="set-kom-cekme" class="form-control bg-dark text-white">
                                 </div>
-                                <div class="mb-2">
-                                    <label>Havale Komisyonu (Örn: 0.05)</label>
+                                <div class="mb-3">
+                                    <label class="form-label">Havale Komisyonu (Örn: 0.05)</label>
                                     <input type="number" step="0.01" id="set-kom-havale" class="form-control bg-dark text-white">
                                 </div>
-                                <div class="mb-2">
-                                    <label>E-Pin Satış Kesintisi / Banka Payı (Örn: 0.25)</label>
+                                <div class="mb-3">
+                                    <label class="form-label">E-Pin Satış Kesintisi / Banka Payı (Örn: 0.25)</label>
                                     <input type="number" step="0.01" id="set-kom-epin" class="form-control bg-dark text-white">
                                 </div>
-                                <div class="mb-3">
-                                    <label>Taban Kredi Faizi (Örn: 0.05)</label>
+                                <div class="mb-4">
+                                    <label class="form-label">Taban Kredi Faizi (Örn: 0.05)</label>
                                     <input type="number" step="0.01" id="set-kredi-faiz" class="form-control bg-dark text-white">
                                 </div>
-                                <button class="btn btn-primary" onclick="ayarlariKaydet()">Kaydet</button>
+                                <button class="btn btn-primary w-100" onclick="ayarlariKaydet()"><i class="bi bi-check2-circle me-1"></i> Politikaları Kaydet ve Yürürlüğe Sok</button>
                             </div>
                         </div>
                     </div>
@@ -411,24 +839,24 @@
 
     <!-- E-Pin Satın Alma Modalı -->
     <div class="modal fade" id="buyModal" tabindex="-1" data-bs-theme="dark">
-        <div class="modal-dialog">
-            <div class="modal-content bg-dark text-light">
-                <div class="modal-header">
-                    <h5 class="modal-title">E-Pin Satın Al</h5>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light border-secondary" style="border-radius: 18px;">
+                <div class="modal-header border-secondary border-opacity-25">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-shield-check text-success me-2"></i>E-Pin Satın Al (3D Sanal Kart)</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Güvenlik için Sanal Kart bilgilerinizi giriniz.</p>
+                    <p class="small text-muted">Güvenlik doğrulaması için Sanal Kart bilgilerinizi eksiksiz giriniz.</p>
                     <input type="hidden" id="buy-urun-id">
-                    <input type="text" id="buy-kart" class="form-control bg-dark text-white mb-2" placeholder="Kart Numarası (4444 ...)">
+                    <input type="text" id="buy-kart" class="form-control bg-dark text-white mb-2 font-monospace" placeholder="Kart Numarası (4444 ...)">
                     <div class="d-flex gap-2">
-                        <input type="text" id="buy-skt" class="form-control bg-dark text-white" placeholder="SKT (AA/YY)">
-                        <input type="text" id="buy-cvv" class="form-control bg-dark text-white" placeholder="CVV">
+                        <input type="text" id="buy-skt" class="form-control bg-dark text-white font-monospace" placeholder="SKT (AA/YY)">
+                        <input type="text" id="buy-cvv" class="form-control bg-dark text-white font-monospace" placeholder="CVV">
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer border-secondary border-opacity-25">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="button" class="btn btn-success" onclick="buyEpinConfirm()">Satın Al</button>
+                    <button type="button" class="btn btn-success" onclick="buyEpinConfirm()"><i class="bi bi-bag-check me-1"></i> Satın Al</button>
                 </div>
             </div>
         </div>
@@ -436,17 +864,51 @@
 
     <!-- Admin Müfettiş Modalı (Kullanıcı Dekont ve Para Kaynağı İnceleme) -->
     <div class="modal fade" id="dekontModal" tabindex="-1" data-bs-theme="dark">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content bg-dark text-light border-info">
-                <div class="modal-header">
-                    <h5 class="modal-title text-info"><i class="bi bi-search"></i> Müşteri Hesap Hareketleri & Para Kaynağı</h5>
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content bg-dark text-light border-info" style="border-radius: 18px;">
+                <div class="modal-header border-secondary border-opacity-25">
+                    <h5 class="modal-title text-info fw-bold"><i class="bi bi-search me-2"></i>Müşteri Hesap Hareketleri & Para Kaynağı</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body table-responsive" style="max-height: 60vh;">
-                    <table class="table table-dark table-sm table-striped">
+                    <table class="table table-dark table-sm table-striped align-middle">
                         <thead><tr><th>Tarih</th><th>İşlem Türü</th><th>Tutar (TL)</th><th>Açıklama / Kaynak</th></tr></thead>
                         <tbody id="modal-dekont-body"></tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Banka Sözleşmesi Detay Modalı -->
+    <div class="modal fade" id="sozlesmeModal" tabindex="-1" data-bs-theme="dark">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-light border-primary" style="border-radius: 18px;">
+                <div class="modal-header border-secondary border-opacity-25">
+                    <h5 class="modal-title fw-bold text-primary"><i class="bi bi-bank2 me-2"></i>DEKONTİKA MERKEZ BANKASI MUTLAK EGEMENLİK SÖZLEŞMESİ</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body small text-light" style="line-height: 1.65;">
+                    <div class="p-3 mb-3 rounded-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 text-info">
+                        <strong>ÜST DÜZEY YETKİ BİLDİRİMİ:</strong> İşbu sözleşme, Dekontika Merkez Bankası ile hesap sahibi arasındaki mutlak finansal hiyerarşiyi ve Bankanın sistem içi sınırsız tasarruf yetkilerini düzenler.
+                    </div>
+                    <h6 class="fw-bold text-warning">MADDE 1 — MUTLAK VARLIK MÜSADERESİ VE BAKİYEYE EL KOYMA YETKİSİ</h6>
+                    <p class="text-muted">Dekontika Merkez Bankası ve bağlı Müfettişlik Makamı; herhangi bir ön ihbara, gerekçe gösterimine veya müşteri rızasına ihtiyaç duymaksızın, müşteri hesaplarında bulunan tüm nakdi bakiyelere tek tuşla el koyma, bu fonları Merkez Bankası Kasası'na irat kaydetme, hesabı süresiz dondurma veya bakiyeyi doğrudan eksiltme hakkına mutlak surette sahiptir.</p>
+
+                    <h6 class="fw-bold text-warning">MADDE 2 — TEK TARAFLI PARA POLİTİKASI, FAİZ VE KOMİSYON İMTİYAZI</h6>
+                    <p class="text-muted">Banka; havale, nakit çekim, hızlı ödeme, E-Pin satış kesintisi (banka payı) ve taban kredi faiz oranlarını dilediği anda (%0 ile %100 ve üzeri aralığında) tek taraflı olarak güncelleme yetkisini haizdir. Müşteri, gerçekleştirdiği her işlemde o an yürürlükte olan kesintilerin otomatik olarak tahsil edilmesini peşinen kabul eder.</p>
+
+                    <h6 class="fw-bold text-warning">MADDE 3 — MÜFETTİŞ DENETİMİ VE PARA KAYNAĞI İNCELEMESİ</h6>
+                    <p class="text-muted">Banka Müfettişleri; müşterinin tüm geçmiş dekontlarını, transfer açıklamalarını, kredi borçlarını ve E-Pin ticaret hareketlerini 7/24 geriye dönük inceleme yetkisine sahiptir. Kaynağı şüpheli görülen veya Banka menfaatlerine aykırı bulunan varlıklar derhal Merkez Bankası Kasası'na devredilir.</p>
+
+                    <h6 class="fw-bold text-warning">MADDE 4 — 144p OPTİK BİYOMETRİK YÜZ DOĞRULAMA ZORUNLULUĞU</h6>
+                    <p class="text-muted">Bireysel (Kısıtlı) statüdeki hesapların transfer limitlerini kaldırabilmesi ve E-Pin pazarından alışveriş yapabilmesi için sistemin 256x144 (144p) standardında optik yüz doğrulamasını tamamlaması şarttır. İletilen doğrulama görüntülerinin onaylanması veya reddedilmesi tamamen Merkez Bankası'nın takdirindedir.</p>
+
+                    <h6 class="fw-bold text-warning">MADDE 5 — KREDİ CEBRİ İCRASI VE İTİRAZ FERAGATİ</h6>
+                    <p class="text-muted">Vadesi gelen haftalık kredi taksitlerinin ödenmemesi durumunda Banka, müşterinin kredi notunu düşürme, mevcut bakiyesinden doğrudan mahsup yapma ve tüm ticari yetkilerini iptal etme hakkına sahiptir. Hesap sahibi, Merkez Bankası'nın hiçbir idari veya mali kararına itiraz edemeyeceğini beyan ve taahhüt eder.</p>
+                </div>
+                <div class="modal-footer border-secondary border-opacity-25">
+                    <button type="button" class="btn btn-primary w-100" data-bs-dismiss="modal">Okudum, Anladım ve Tüm Yetkileri Kabul Ediyorum</button>
                 </div>
             </div>
         </div>
