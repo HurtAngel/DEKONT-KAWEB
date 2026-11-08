@@ -851,7 +851,7 @@ def api_kredi_cek():
             raise ApiError(f"Aynı anda en fazla {MAX_AKTIF_KREDI} adet aktif krediniz olabilir.")
         ensure_pending_room(db, email)
 
-                base_faiz = db["ayarlar"].get("kredi_faiz", 0.05)
+        base_faiz = db["ayarlar"].get("kredi_faiz", 0.05)
         carpan = 1.0 + ((hafta - 3) / 9.0) * 1.1
         oran = base_faiz * carpan
         toplam = round(tutar + (tutar * oran), 2)
