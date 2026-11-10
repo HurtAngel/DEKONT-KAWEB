@@ -578,9 +578,12 @@
                                 <i class="bi bi-clipboard"></i>
                             </button>
                         </div>
-                        <div class="d-flex justify-content-between small text-muted">
+                        <div class="d-flex justify-content-between small text-muted mb-1">
                             <span>Davet Edilen: <b class="text-white" id="user-ref-sayisi">0</b> kişi</span>
-                            <span>Kâr Payı Geliri: <b class="text-success font-monospace" id="user-temsilci-kazanc">0.00 TL</b></span>
+                            <span>Toplam Gelir: <b class="text-success font-monospace" id="user-temsilci-kazanc">0.00 TL</b></span>
+                        </div>
+                        <div class="small text-secondary" style="font-size: 0.74rem;">
+                            <i class="bi bi-gift text-warning me-1"></i>Davet ettiğiniz kişi hesabını doğruladığında <b class="text-light" id="ref-odul-text">50 TL</b> ödül kazanırsınız. Temsilciler ek olarak işlem kâr payı alır.
                         </div>
                     </div>
                 </div>
@@ -772,6 +775,13 @@
                                 <p class="small text-muted mb-3">Para çekiminde %0 komisyon, Barkodlu POS Slip üretme ve E-Pin Markette satış yapabilme yetkisi verir.</p>
                                 <button class="btn btn-warning" onclick="requestBusiness()"><i class="bi bi-patch-check me-1"></i>İş Hesabı Talep Et</button>
                             </div>
+
+                            <!-- Temsilcilik Başvurusu Paneli -->
+                            <div class="card p-4 mb-3 border-info" id="temsilci-basvuru-panel">
+                                <h5 class="fw-bold text-info"><i class="bi bi-diagram-3-fill me-2"></i>Yetkili Temsilcilik Başvurusu</h5>
+                                <p class="small text-muted mb-3">Standart referans doğrulama ödülüne ek olarak, davet ettiğiniz üyelerin yaptığı tüm komisyonlu işlemlerden Merkez Bankası Kasa kâr payı almanızı sağlar.</p>
+                                <button class="btn btn-primary" onclick="requestTemsilci()"><i class="bi bi-award me-1"></i>Temsilcilik Talep Et</button>
+                            </div>
                             
                             <div class="card p-4">
                                 <h5 class="fw-bold mb-3"><i class="bi bi-hourglass-split me-2 text-info"></i>Bekleyen Taleplerim</h5>
@@ -795,7 +805,6 @@
                     <span>Merkez Bankası <small class="badge bg-danger ms-1">YÖNETİM & TEFTİŞ</small></span>
                 </a>
                 <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-sm btn-warning" onclick="admTriggerOverdue()"><i class="bi bi-Exclamation-triangle me-1"></i> Kredi Gecikme Denetimi</button>
                     <a href="/api/admin/backup" class="btn btn-sm btn-dark border border-secondary"><i class="bi bi-download me-1"></i> Yedek İndir</a>
                     <input type="file" id="adm-restore-file" accept=".json" class="d-none" onchange="admRestoreDb(event)">
                     <button class="btn btn-sm btn-outline-light" onclick="document.getElementById('adm-restore-file').click()">
@@ -814,6 +823,7 @@
                             <a class="nav-link active" data-bs-toggle="pill" href="#adm-genel"><i class="bi bi-pie-chart-fill me-2"></i>Genel Bakış</a>
                             <a class="nav-link" data-bs-toggle="pill" href="#adm-onaylar"><i class="bi bi-check2-square me-2"></i>Onay Bekleyenler</a>
                             <a class="nav-link" data-bs-toggle="pill" href="#adm-kullanicilar"><i class="bi bi-people-fill me-2"></i>Müşteriler / Müfettiş</a>
+                            <a class="nav-link" data-bs-toggle="pill" href="#adm-krediler"><i class="bi bi-cash-stack me-2"></i>Kredi Durumları</a>
                             <a class="nav-link" data-bs-toggle="pill" href="#adm-epin"><i class="bi bi-box-seam-fill me-2"></i>E-Pin Yönetimi</a>
                             <a class="nav-link" data-bs-toggle="pill" href="#adm-kuponlar"><i class="bi bi-ticket-perforated-fill me-2"></i>İndirim Kuponları</a>
                             <a class="nav-link" data-bs-toggle="pill" href="#adm-ayarlar"><i class="bi bi-sliders me-2"></i>Sistem Ayarları</a>
@@ -846,25 +856,31 @@
                             </div>
                         </div>
 
-                        <!-- Onay Bekleyenler -->
+                        <!-- Onay Bekleyenler (Finansal, Selfie, İş Hesabı, Temsilcilik) -->
                         <div class="tab-pane fade" id="adm-onaylar">
                             <div class="row g-3">
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="card p-3 h-100">
-                                        <h5 class="fw-bold mb-3 text-info"><i class="bi bi-cash-coin me-2"></i>Finansal Talepler</h5>
+                                        <h6 class="fw-bold mb-3 text-info"><i class="bi bi-cash-coin me-1"></i>Finansal Talepler</h6>
                                         <div id="adm-bekleyen-list"></div>
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="card p-3 h-100">
-                                        <h5 class="fw-bold mb-3 text-danger"><i class="bi bi-camera-fill me-2"></i>Doğrulama Talepleri (Selfie)</h5>
+                                        <h6 class="fw-bold mb-3 text-danger"><i class="bi bi-camera-fill me-1"></i>Doğrulama (Selfie)</h6>
                                         <div id="adm-dogrulama-list"></div>
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="card p-3 h-100">
-                                        <h5 class="fw-bold mb-3 text-warning"><i class="bi bi-building-check me-2"></i>İş Hesabı Talepleri</h5>
+                                        <h6 class="fw-bold mb-3 text-warning"><i class="bi bi-building-check me-1"></i>İş Hesabı Talepleri</h6>
                                         <div id="adm-is-hesabi-list"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card p-3 h-100 border-info">
+                                        <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-diagram-3-fill me-1"></i>Temsilcilik Talepleri</h6>
+                                        <div id="adm-temsilci-list"></div>
                                     </div>
                                 </div>
                             </div>
@@ -887,6 +903,36 @@
                                             </tr>
                                         </thead>
                                         <tbody id="adm-users-list"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- YENİ: Kredi Durumları & Vade/Ceza/Muafiyet/Edit Menüsü -->
+                        <div class="tab-pane fade" id="adm-krediler">
+                            <div class="card p-4">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                    <div>
+                                        <h5 class="fw-bold mb-1 text-warning"><i class="bi bi-cash-stack me-2"></i>Tüm Aktif Krediler & Vade Denetimi</h5>
+                                        <p class="small text-muted mb-0">Vadesi geçen krediler otomatik cezalandırılır ve kırmızıyla işaretlenir. İstediğiniz krediye ek süre tanıyabilir, cezadan muaf tutabilir, manuel ceza kesebilir veya borç/taksit verilerini düzenleyebilirsiniz.</p>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-sm align-middle text-center mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Kredi ID</th>
+                                                <th>Müşteri / Kredi Notu</th>
+                                                <th>Ana Para / Toplam</th>
+                                                <th>Kalan Borç</th>
+                                                <th>Haftalık Taksit</th>
+                                                <th>Kalan Vade</th>
+                                                <th>Sonraki Taksit / Durum</th>
+                                                <th>Gecikme / Muafiyet</th>
+                                                <th>Yönetici Müdahalesi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="adm-all-loans-list"></tbody>
                                     </table>
                                 </div>
                             </div>
@@ -974,8 +1020,8 @@
 
                         <!-- Sistem Ayarları (Tüm Değişkenler & Süreler Düzenlenebilir) -->
                         <div class="tab-pane fade" id="adm-ayarlar">
-                            <div class="card p-4" style="max-width: 780px;">
-                                <h5 class="fw-bold mb-3"><i class="bi bi-gear-wide-connected me-2 text-primary"></i>Merkez Bankası Tüm Parametreler, Süreler & Komisyonlar</h5>
+                            <div class="card p-4" style="max-width: 820px;">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-gear-wide-connected me-2 text-primary"></i>Merkez Bankası Tüm Parametreler, Ödüller, Süreler & Komisyonlar</h5>
                                 <div class="row g-3">
                                     <div class="col-md-4">
                                         <label class="form-label">Ödeme Komisyonu (Örn: 0.60)</label>
@@ -1018,8 +1064,16 @@
                                         <input type="number" step="1" id="set-kredi-not-ceza" class="form-control">
                                     </div>
                                     <div class="col-md-4">
+                                        <label class="form-label text-warning">Varsayılan Kredi Ek Süre (Gün)</label>
+                                        <input type="number" step="1" id="set-kredi-ek-gun" class="form-control border-warning">
+                                    </div>
+                                    <div class="col-md-4">
                                         <label class="form-label text-warning">3D Secure Onay Süresi (Dakika)</label>
                                         <input type="number" step="1" id="set-ucd-sure" class="form-control border-warning">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label text-info">Referans Doğrulama Ödülü (TL)</label>
+                                        <input type="number" step="1" id="set-ref-odul" class="form-control border-info">
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label text-info">Temsilci Kâr Payı Oranı (0.20)</label>
@@ -1033,6 +1087,41 @@
                                 <button class="btn btn-primary w-100 mt-4" onclick="ayarlariKaydet()"><i class="bi bi-check2-circle me-1"></i> Politikaları Kaydet ve Yürürlüğe Sok</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Kredi Düzenleme Modalı -->
+    <div class="modal fade" id="krediEditModal" tabindex="-1" data-bs-theme="dark">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light border-warning" style="border-radius: 18px;">
+                <div class="modal-header border-secondary border-opacity-25">
+                    <h5 class="modal-title fw-bold text-warning"><i class="bi bi-pencil-square me-2"></i>Kredi Bilgilerini Düzenle</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="edit-kredi-email">
+                    <input type="hidden" id="edit-kredi-id">
+                    <div class="mb-3">
+                        <label class="form-label">Kalan Toplam Borç (TL)</label>
+                        <input type="number" step="0.01" id="edit-kredi-borc" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Haftalık Taksit Tutarı (TL)</label>
+                        <input type="number" step="0.01" id="edit-kredi-taksit" class="form-control">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Kalan Hafta Sayısı</label>
+                        <input type="number" step="1" id="edit-kredi-hafta" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary border-opacity-25 justify-content-between">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="admDeleteLoanConfirm()"><i class="bi bi-trash me-1"></i>Krediyi Sil/Kapat</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                        <button type="button" class="btn btn-warning" onclick="admSaveLoanEdit()">Kaydet</button>
                     </div>
                 </div>
             </div>
@@ -1183,10 +1272,12 @@
         let pollIntervalSec = 4;
         let cachedDekonts = [];
         let cachedEpins = [];
+        let defaultEkGun = 7;
 
         const buyModalObj = new bootstrap.Modal(document.getElementById('buyModal'));
         const dekontModalObj = new bootstrap.Modal(document.getElementById('dekontModal'));
         const resmiDekontModalObj = new bootstrap.Modal(document.getElementById('resmiDekontModal'));
+        const krediEditModalObj = new bootstrap.Modal(document.getElementById('krediEditModal'));
 
         function g(id) { return document.getElementById(id); }
         function hide(id) { if(g(id)) g(id).classList.add("hidden"); }
@@ -1357,6 +1448,10 @@
             g("user-kredinotu").innerText = u.kredi_notu;
             g("user-durum").innerText = u.durum;
 
+            if (data.ayarlar && data.ayarlar.referans_dogrulama_odulu !== undefined) {
+                g("ref-odul-text").innerText = data.ayarlar.referans_dogrulama_odulu + " TL";
+            }
+
             // 3D Secure Switch Durumu
             g("ucd-switch").checked = u.ucd_aktif;
             g("ucd-durum-text").innerText = u.ucd_aktif ? "AÇIK" : "KAPALI";
@@ -1388,6 +1483,7 @@
 
             if (u.dogrulandi) hide("dogrulama-panel"); else show("dogrulama-panel");
             if (u.is_hesabi || data.is_hesabi_talep_var) hide("is-hesabi-panel"); else show("is-hesabi-panel");
+            if (u.is_temsilci || data.temsilci_talep_var) hide("temsilci-basvuru-panel"); else show("temsilci-basvuru-panel");
 
             // 3D Secure Bekleyen Onay Havuzu
             const onaylar = data.kart_onaylari || [];
@@ -1410,11 +1506,15 @@
 
             // Krediler
             g("krediler-list").innerHTML = data.krediler.map(k => `
-                <div class="card bg-dark border-secondary p-3 mb-2">
+                <div class="card bg-dark border-${k.vadesi_gecti ? 'danger' : 'secondary'} p-3 mb-2">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div>
-                            <span>Kalan Borç: <b class="text-warning">${k.kalan_borc.toFixed(2)} TL</b> (${k.kalan_hafta} Hafta Kaldı)</span>
-                            ${k.gecikme_sayisi ? `<span class="badge bg-danger ms-2">${k.gecikme_sayisi} Gecikme Cezası</span>` : ''}
+                            <div>Kalan Borç: <b class="text-warning">${k.kalan_borc.toFixed(2)} TL</b> (${k.kalan_hafta} Hafta Kaldı)</div>
+                            <div class="small text-muted">Sonraki Taksit Vadesi: <b class="text-light">${k.sonraki_taksit_tarihi || '-'}</b>
+                                ${k.vadesi_gecti ? '<span class="badge bg-danger ms-1">Vadesi Geçti</span>' : ''}
+                                ${k.ceza_muaf ? '<span class="badge bg-info text-dark ms-1">Cezadan Muaf</span>' : ''}
+                                ${k.gecikme_sayisi ? `<span class="badge bg-warning text-dark ms-1">${k.gecikme_sayisi} Gecikme</span>` : ''}
+                            </div>
                         </div>
                         <div class="d-flex gap-2">
                             <button class="btn btn-sm btn-outline-warning" onclick="krediOde('haftalik', '${k.kredi_id}')">Haftalık Taksit (${k.haftalik_taksit.toFixed(2)} TL)</button>
@@ -1638,6 +1738,11 @@
             if(res) loadUserData(true);
         }
 
+        async function requestTemsilci() {
+            const res = await fetchAPI("/api/user/request-temsilci", "POST", {});
+            if(res) loadUserData(true);
+        }
+
         // E-Pin & Kupon İşlemleri
         function openBuyModal(urun_id) {
             g("buy-urun-id").value = urun_id;
@@ -1679,6 +1784,7 @@
 
             g("adm-kasa").innerText = data.kasa.toFixed(2);
             if(data.toplam_dolasim !== undefined) g("adm-dolasim").innerText = data.toplam_dolasim.toFixed(2);
+            if (data.ayarlar && data.ayarlar.kredi_ek_zaman_gun) defaultEkGun = data.ayarlar.kredi_ek_zaman_gun;
             if (!silent) {
                 g("adm-grafik").src = "/api/admin/grafik?t=" + new Date().getTime();
             }
@@ -1699,13 +1805,13 @@
                     <td>${u.dogrulandi ? '<span class="badge bg-success">Onaylı</span>' : '<span class="badge bg-warning text-dark">Kısıtlı</span>'}</td>
                     <td>
                         ${u.is_hesabi ? '<span class="badge bg-primary">İş</span>' : '<span class="badge bg-dark">Bireysel</span>'}
-                        ${u.is_temsilci ? '<span class="badge bg-info text-dark">Temsilci</span>' : ''}
+                        ${u.is_temsilci ? '<span class="badge bg-info text-dark">Temsilci</span>' : '<span class="badge bg-secondary">Standart</span>'}
                     </td>
                     <td>
                         <div class="btn-group btn-group-sm flex-wrap">
                             <button class="btn btn-info" onclick="admViewDekonts('${email}')" title="Hesap Kaynağını İncele"><i class="bi bi-search"></i></button>
                             ${!u.dogrulandi ? `<button class="btn btn-success" onclick="admDirectVerify('${email}')" title="Doğrula"><i class="bi bi-check-circle"></i></button>` : ''}
-                            <button class="btn btn-outline-info" onclick="editUser('${email}','temsilci_degistir')" title="Temsilci Yetkisi Değiştir"><i class="bi bi-diagram-3"></i></button>
+                            <button class="btn btn-${u.is_temsilci?'info':'outline-info'}" onclick="editUser('${email}','temsilci_degistir')" title="Temsilci Yetkisi Aç/Kapat"><i class="bi bi-diagram-3"></i></button>
                             <button class="btn btn-outline-success" onclick="editUser('${email}','bakiye_ekle')">+Bky</button>
                             <button class="btn btn-outline-danger" onclick="editUser('${email}','bakiye_kes')">-Bky</button>
                             <button class="btn btn-warning" onclick="editUser('${email}', '${u.durum==='aktif'?'dondur':'aktif_et'}')">${u.durum==='aktif'?'Dondur':'Aç'}</button>
@@ -1715,6 +1821,44 @@
                     </td>
                 </tr>
             `).join("");
+
+            // Kredi Durumları Tablosu (Tüm Krediler, Vade Geçenler Ayrı İşaretli, Muafiyet/Ceza/Ek Süre/Edit)
+            const loans = data.tum_krediler || [];
+            g("adm-all-loans-list").innerHTML = loans.map(k => {
+                const gun = Math.floor(Math.abs(k.kalan_sn) / 86400);
+                const saat = Math.floor((Math.abs(k.kalan_sn) % 86400) / 3600);
+                const sureEtiket = k.vadesi_gecti
+                    ? `<span class="badge bg-danger"><i class="bi bi-exclamation-octagon me-1"></i>VADESİ GEÇTİ (${gun}g ${saat}s)</span>`
+                    : `<span class="badge bg-success">${gun}g ${saat}s kaldı</span>`;
+
+                return `<tr class="${k.vadesi_gecti ? 'table-danger text-light' : ''}">
+                    <td class="font-monospace fw-bold">${k.kredi_id}</td>
+                    <td>
+                        <div class="fw-bold">${k.ad_soyad}</div>
+                        <small class="text-muted">${k.email} (Not: ${k.kredi_notu})</small>
+                    </td>
+                    <td>${k.ana_para.toFixed(2)} TL<br><small class="text-muted">Top: ${k.toplam_borc.toFixed(2)} TL</small></td>
+                    <td class="text-warning fw-bold font-monospace">${k.kalan_borc.toFixed(2)} TL</td>
+                    <td class="font-monospace">${k.haftalik_taksit.toFixed(2)} TL</td>
+                    <td>${k.kalan_hafta} / ${k.toplam_hafta} Hafta</td>
+                    <td>
+                        <div class="small font-monospace">${k.sonraki_taksit_tarihi}</div>
+                        ${sureEtiket}
+                    </td>
+                    <td>
+                        <span class="badge bg-${k.gecikme_sayisi > 0 ? 'danger' : 'secondary'}">${k.gecikme_sayisi} Ceza</span>
+                        ${k.ceza_muaf ? '<span class="badge bg-info text-dark d-block mt-1">Cezadan Muaf</span>' : '<span class="badge bg-dark border border-secondary d-block mt-1">Denetimde</span>'}
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm flex-wrap">
+                            <button class="btn btn-outline-warning" onclick="admLoanExtraTime('${k.email}', '${k.kredi_id}')" title="Ek Süre Tanı"><i class="bi bi-calendar-plus"></i> +Süre</button>
+                            <button class="btn btn-${k.ceza_muaf ? 'info' : 'outline-info'}" onclick="admLoanAction('${k.email}', '${k.kredi_id}', 'muaf_degistir')" title="Cezadan Muaf Tut / Kaldır">${k.ceza_muaf ? 'Muaf' : 'Muaf Et'}</button>
+                            <button class="btn btn-outline-danger" onclick="admLoanAction('${k.email}', '${k.kredi_id}', 'manuel_ceza')" title="Manuel Ceza Uygula"><i class="bi bi-lightning"></i> Ceza</button>
+                            <button class="btn btn-outline-light" onclick="openLoanEditModal('${k.email}', '${k.kredi_id}', ${k.kalan_borc}, ${k.haftalik_taksit}, ${k.kalan_hafta})" title="Krediyi Düzenle"><i class="bi bi-pencil"></i> Edit</button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join("") || '<tr><td colspan="9" class="text-muted text-center py-3">Sistemde aktif kredi bulunmuyor.</td></tr>';
 
             // Bekleyen Finansal Talepler
             g("adm-bekleyen-list").innerHTML = Object.entries(data.bekleyen_talepler).map(([id, t]) => `
@@ -1751,198 +1895,19 @@
                 </div>
             `).join("") || '<p class="text-muted small">İş hesabı başvurusu yok.</p>';
 
-            // Ayarlar (Sadece ilk yüklemede veya kaydetme sonrasında doldurulur ki yazarken silinmesin)
+            // Temsilcilik Talepleri Onay
+            g("adm-temsilci-list").innerHTML = Object.entries(data.temsilci_talepleri || {}).map(([email, d]) => `
+                <div class="card bg-dark border-info p-2 mb-2">
+                    <p class="mb-0 small fw-bold">${d.ad_soyad}</p>
+                    <p class="mb-1 small text-muted">${email} (${d.ref_kod || '-'})</p>
+                    <div class="d-flex gap-2 mt-2">
+                        <button class="btn btn-sm btn-success w-50" onclick="admApproveTemsilci('${email}','onay')">Onayla</button>
+                        <button class="btn btn-sm btn-danger w-50" onclick="admApproveTemsilci('${email}','red')">Reddet</button>
+                    </div>
+                </div>
+            `).join("") || '<p class="text-muted small">Temsilcilik başvurusu yok.</p>';
+
+            // Ayarlar
             if (!silent) {
                 g("set-kom-odeme").value = data.ayarlar.komisyon_odeme;
-                g("set-kom-cekme").value = data.ayarlar.komisyon_cekme;
-                g("set-kom-havale").value = data.ayarlar.komisyon_havale;
-                g("set-havale-sinir").value = data.ayarlar.havale_sinir;
-                g("set-kisitli-havale").value = data.ayarlar.kisitli_gunluk_havale;
-                g("set-kom-epin").value = data.ayarlar.komisyon_epin_satis;
-                g("set-kom-slip").value = data.ayarlar.komisyon_slip;
-                g("set-kredi-faiz").value = data.ayarlar.kredi_faiz;
-                g("set-kredi-ceza-oran").value = data.ayarlar.kredi_gecikme_ceza_orani;
-                g("set-kredi-not-ceza").value = data.ayarlar.gecikme_kredi_notu_ceza;
-                g("set-ucd-sure").value = data.ayarlar.ucd_onay_suresi_dk;
-                g("set-temsilci-pay").value = data.ayarlar.temsilci_kar_payi_orani;
-                g("set-canli-sn").value = data.ayarlar.canli_yenileme_sn;
-            }
-
-            // E-Pin Yönetimi
-            g("adm-epin-list").innerHTML = Object.values(data.epin_urunler).map(e => `
-                <tr>
-                    <td class="font-monospace">${e.id}</td><td>${e.baslik}</td><td>${e.fiyat} TL</td><td>${e.satici}</td><td>${e.stok_kodlar.length}</td>
-                    <td><button class="btn btn-sm btn-outline-danger" onclick="admDeleteEpin('${e.id}')">Sil</button></td>
-                </tr>
-            `).join("");
-
-            // Kupon Yönetimi
-            g("adm-kupon-list").innerHTML = Object.values(data.kuponlar || {}).map(k => `
-                <tr>
-                    <td><code>${k.kod}</code></td>
-                    <td>${k.tur === 'yuzde' ? '%'+k.deger : k.deger+' TL'}</td>
-                    <td>${k.hedef_kullanici}</td>
-                    <td>${k.hedef_urun}</td>
-                    <td>${(k.kullananlar || []).length} / ${k.toplam_limit} (Kişi: ${k.kisi_basi_limit})</td>
-                    <td>${k.bitis_tarihi}</td>
-                    <td><button class="btn btn-sm btn-outline-danger" onclick="admKuponSil('${k.kod}')">Sil</button></td>
-                </tr>
-            `).join("") || '<tr><td colspan="7" class="text-muted text-center">Tanımlı kupon bulunmuyor.</td></tr>';
-        }
-
-        async function admKuponOlustur() {
-            const res = await fetchAPI("/api/admin/create-coupon", "POST", {
-                kod: g("kpn-kod").value,
-                tur: g("kpn-tur").value,
-                deger: g("kpn-deger").value,
-                hedef_kullanici: g("kpn-kullanici").value,
-                hedef_urun: g("kpn-urun").value,
-                kisi_basi_limit: g("kpn-kisi-limit").value,
-                toplam_limit: g("kpn-toplam-limit").value,
-                gecerlilik_saat: g("kpn-saat").value
-            });
-            if (res) {
-                g("kpn-kod").value = ""; g("kpn-deger").value = "";
-                loadAdminData(false);
-            }
-        }
-
-        async function admKuponSil(kod) {
-            const res = await fetchAPI("/api/admin/delete-coupon", "POST", { kod });
-            if (res) loadAdminData(false);
-        }
-
-        async function admTriggerOverdue() {
-            const res = await fetchAPI("/api/admin/trigger-overdue-loans", "POST", {});
-            if (res) loadAdminData(false);
-        }
-
-        async function admDeleteUser(email) {
-            if (!confirm(`${email} kullanıcısını ve tüm verilerini sistemden kalıcı olarak silmek istediğinize emin misiniz?`)) return;
-            const res = await fetchAPI("/api/admin/delete-user", "POST", { email });
-            if (res) loadAdminData(false);
-        }
-
-        async function editUser(email, action) {
-            let amount = 0;
-            if(action.includes('bakiye')) amount = prompt("Tutar girin:");
-            if(amount === null) return;
-            const res = await fetchAPI("/api/admin/edit-user", "POST", { email, action, amount });
-            if(res) loadAdminData(false);
-        }
-        async function admApproveReq(req_id, action) {
-            const res = await fetchAPI("/api/admin/approve-request", "POST", { req_id, action });
-            if(res) loadAdminData(false);
-        }
-        async function admVerifyUser(email, action) {
-            const res = await fetchAPI("/api/admin/verify-user", "POST", { email, action });
-            if(res) loadAdminData(false);
-        }
-        async function admApproveBusiness(email, action) {
-            const res = await fetchAPI("/api/admin/approve-business", "POST", { email, action });
-            if(res) loadAdminData(false);
-        }
-        async function ayarlariKaydet() {
-            const res = await fetchAPI("/api/admin/update-settings", "POST", {
-                komisyon_odeme: g("set-kom-odeme").value,
-                komisyon_cekme: g("set-kom-cekme").value,
-                komisyon_havale: g("set-kom-havale").value,
-                havale_sinir: g("set-havale-sinir").value,
-                kisitli_gunluk_havale: g("set-kisitli-havale").value,
-                komisyon_epin_satis: g("set-kom-epin").value,
-                komisyon_slip: g("set-kom-slip").value,
-                kredi_faiz: g("set-kredi-faiz").value,
-                kredi_gecikme_ceza_orani: g("set-kredi-ceza-oran").value,
-                gecikme_kredi_notu_ceza: g("set-kredi-not-ceza").value,
-                ucd_onay_suresi_dk: g("set-ucd-sure").value,
-                temsilci_kar_payi_orani: g("set-temsilci-pay").value,
-                canli_yenileme_sn: g("set-canli-sn").value
-            });
-            if(res) {
-                pollIntervalSec = parseInt(g("set-canli-sn").value) || 4;
-                startPolling();
-                loadAdminData(false);
-            }
-        }
-        async function admEpinEkle() {
-            const res = await fetchAPI("/api/admin/add-epin", "POST", { 
-                baslik: g("adm-epin-baslik").value, fiyat: g("adm-epin-fiyat").value, satici: g("adm-epin-satici").value, kodlar: g("adm-epin-kodlar").value 
-            });
-            if(res) { g("adm-epin-baslik").value=""; g("adm-epin-fiyat").value=""; g("adm-epin-kodlar").value=""; loadAdminData(false); }
-        }
-        async function admDeleteEpin(urun_id) {
-            if(!confirm("Emin misiniz?")) return;
-            const res = await fetchAPI("/api/admin/delete-epin", "POST", { urun_id });
-            if(res) loadAdminData(false);
-        }
-
-        async function admDirectVerify(email) {
-            const res = await fetchAPI("/api/admin/direct-verify", "POST", { email });
-            if(res) loadAdminData(false);
-        }
-
-        async function admSeizeBalance(email) {
-            if(!confirm(`DİKKAT: ${email} kullanıcısının tüm bakiyesine el konulup Merkez Bankası kasasına aktarılacak. Onaylıyor musunuz?`)) return;
-            const res = await fetchAPI("/api/admin/seize-balance", "POST", { email });
-            if(res) loadAdminData(false);
-        }
-
-        async function admViewDekonts(email) {
-            const res = await fetchAPI("/api/admin/user-dekonts", "POST", { email });
-            if(res) {
-                let html = res.dekontlar.map(d => `
-                    <tr>
-                        <td>${d.tarih}</td>
-                        <td><span class="badge bg-secondary">${d.tur}</span></td>
-                        <td class="text-${d.tutar>0?'success':'danger'} fw-bold">${d.tutar.toFixed(2)} TL</td>
-                        <td>${d.aciklama}</td>
-                    </tr>
-                `).join("");
-                g("modal-dekont-body").innerHTML = html || "<tr><td colspan='4' class='text-center text-muted'>Hesap hareketi bulunamadı.</td></tr>";
-                dekontModalObj.show();
-            }
-        }
-
-        async function admRestoreDb(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            if (!confirm("Dikkat! Mevcut tüm veriler silinip bu yedek hem MongoDB'ye hem yerel diske yazılacak. Devam edilsin mi?")) {
-                event.target.value = "";
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append("file", file);
-
-            g("loader").classList.remove("hidden");
-            try {
-                const headers = {};
-                if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
-
-                const res = await fetch("/api/admin/restore-db", {
-                    method: "POST",
-                    headers: headers,
-                    body: formData
-                });
-
-                const data = await res.json();
-                if (!res.ok) {
-                    showToast(data.message || "Yükleme hatası.", "danger");
-                } else {
-                    showToast("Veritabanı başarıyla geri yüklendi! Sayfa yenileniyor...", "success");
-                    setTimeout(() => window.location.reload(), 1500);
-                }
-            } catch (err) {
-                showToast("Sunucuyla bağlantı kurulamadı.", "danger");
-            } finally {
-                g("loader").classList.add("hidden");
-                event.target.value = "";
-            }
-        }
-
-        // Başlangıç
-        window.onload = init;
-    </script>
-</body>
-</html>
+                g("set-kom-cekme
