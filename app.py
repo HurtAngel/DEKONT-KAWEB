@@ -92,10 +92,12 @@ DEFAULT_AYARLAR = {
     "gecikme_cezasi": 50.0,
     "kredi_gecikme_ceza_orani": 0.02,
     "gecikme_kredi_notu_ceza": 50,
+    "kredi_ek_zaman_gun": 7,
     "komisyon_epin_satis": 0.25,
     "komisyon_slip": 0.03,
     "ucd_onay_suresi_dk": 10,
     "temsilci_kar_payi_orani": 0.20,
+    "referans_dogrulama_odulu": 50.0,
     "canli_yenileme_sn": 4,
 }
 
@@ -194,6 +196,12 @@ def db_lock():
 def now_str():
     return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
+def ts_to_str(ts):
+    try:
+        return datetime.fromtimestamp(float(ts)).strftime("%d/%m/%Y %H:%M")
+    except Exception:
+        return "-"
+
 def iso_now(delta_days=0):
     return (datetime.now() + timedelta(days=delta_days)).strftime("%Y-%m-%dT%H:%M:%S")
 
@@ -275,6 +283,7 @@ def new_user(db, ad_soyad, password, *, admin=False, bakiye=0.0, referans_eden=N
         "ucd_aktif": True,
         "ref_kod": "REF-MERKEZ" if admin else generate_ref_kod(db),
         "referans_eden": referans_eden,
+        "ref_odul_verildi": True if admin else False,
         "temsilci_kazanc": 0.0,
         "selfie": None,
         "krediler": [],
@@ -288,6 +297,7 @@ def default_db():
         "bekleyen_talepler": {},
         "dogrulama_talepleri": {},
         "is_hesabi_talepleri": {},
+        "temsilci_talepleri": {},
         "bekleyen_kart_onaylari": {},
         "kuponlar": {},
         "slipler": {},
@@ -316,6 +326,24 @@ def add_dekont(db, user_email, tur, tutar, aciklama, epin_kod=None):
     del db["dekontlar"][MAX_DEKONT:]
     return dekont_entry["dekont_no"]
 
+def grant_referral_verification_reward(db, verified_email):
+    """Davet edilen kullanıcı hesabını doğruladığında davet edene (standart veya temsilci) ödül verir."""
+    u = db["users"].get(verified_email)
+    if not u or u.get("ref_odul_verildi"):
+        return
+    u["ref_odul_verildi"] = True
+    ref_email = u.get("referans_eden")
+    if not ref_email:
+        return
+    davet_eden = db["users"].get(ref_email)
+    if not davet_eden or davet_eden.get("durum") == "dondurulmus":
+        return
+    odul = round(float(db["ayarlar"].get("referans_dogrulama_odulu", 50.0)), 2)
+    if odul > 0:
+        davet_eden["bakiye"] = round(davet_eden["bakiye"] + odul, 2)
+        davet_eden["temsilci_kazanc"] = round(davet_eden.get("temsilci_kazanc", 0.0) + odul, 2)
+        add_dekont(db, ref_email, "REFERANS_ODULU", odul, f"Davet Doğrulama Ödülü ({verified_email} hesabını doğruladı)")
+
 def distribute_kasa_profit(db, kaynak_email, kar_tutari, islem_adi):
     """Kasa kar elde ettiğinde, işlemi yapan kullanıcının referans temsilcisi varsa pay aktarır."""
     kar_tutari = round(float(kar_tutari), 2)
@@ -337,11 +365,29 @@ def distribute_kasa_profit(db, kaynak_email, kar_tutari, islem_adi):
             return
     db["kasa"] = round(db["kasa"] + kar_tutari, 2)
 
-def process_overdue_loans(db, force_all=False):
-    """Haftalık kredi taksiti gecikenlere %2 (ayarlanabilir) ceza ve kredi notu düşümü uygular."""
-    now_ts = time.time()
+def apply_single_loan_penalty(db, email, u, k):
+    """Tek bir krediye gecikme cezası ve kredi notu düşümü uygular."""
     ceza_orani = float(db["ayarlar"].get("kredi_gecikme_ceza_orani", 0.02))
     not_cezasi = int(db["ayarlar"].get("gecikme_kredi_notu_ceza", 50))
+    ceza_tutari = round(k["kalan_borc"] * ceza_orani, 2)
+    if ceza_tutari > 0:
+        k["kalan_borc"] = round(k["kalan_borc"] + ceza_tutari, 2)
+        k["toplam_borc"] = round(k.get("toplam_borc", k["kalan_borc"]) + ceza_tutari, 2)
+        kalan_h = max(1, int(k.get("kalan_hafta", 1)))
+        k["haftalik_taksit"] = round(k["kalan_borc"] / kalan_h, 2)
+        k["gecikme_sayisi"] = int(k.get("gecikme_sayisi", 0)) + 1
+        k["sonraki_taksit_ts"] = time.time() + (7 * 86400)
+        u["kredi_notu"] = max(0, int(u.get("kredi_notu", 1000)) - not_cezasi)
+        add_dekont(
+            db, email, "KREDI_GECIKME_CEZASI", -ceza_tutari,
+            f"Kredi ({k['kredi_id']}) gecikme cezası (+%{round(ceza_orani*100, 1)})"
+        )
+        return True
+    return False
+
+def process_overdue_loans(db, force_all=False):
+    """Haftalık kredi taksiti gecikenlere (muaf değilse) otomatik ceza ve kredi notu düşümü uygular."""
+    now_ts = time.time()
     etkilenen = 0
 
     for email, u in db.get("users", {}).items():
@@ -350,20 +396,10 @@ def process_overdue_loans(db, force_all=False):
                 continue
             if "sonraki_taksit_ts" not in k:
                 k["sonraki_taksit_ts"] = now_ts + (7 * 86400)
-            if force_all or now_ts > k["sonraki_taksit_ts"]:
-                ceza_tutari = round(k["kalan_borc"] * ceza_orani, 2)
-                if ceza_tutari > 0:
-                    k["kalan_borc"] = round(k["kalan_borc"] + ceza_tutari, 2)
-                    k["toplam_borc"] = round(k.get("toplam_borc", k["kalan_borc"]) + ceza_tutari, 2)
-                    kalan_h = max(1, int(k.get("kalan_hafta", 1)))
-                    k["haftalik_taksit"] = round(k["kalan_borc"] / kalan_h, 2)
-                    k["gecikme_sayisi"] = int(k.get("gecikme_sayisi", 0)) + 1
-                    k["sonraki_taksit_ts"] = now_ts + (7 * 86400)
-                    u["kredi_notu"] = max(0, int(u.get("kredi_notu", 1000)) - not_cezasi)
-                    add_dekont(
-                        db, email, "KREDI_GECIKME_CEZASI", -ceza_tutari,
-                        f"Kredi ({k['kredi_id']}) haftalık taksit gecikme cezası (+%{round(ceza_orani*100, 1)})"
-                    )
+            if k.get("ceza_muaf", False) and not force_all:
+                continue
+            if force_all or now_ts > float(k["sonraki_taksit_ts"]):
+                if apply_single_loan_penalty(db, email, u, k):
                     etkilenen += 1
     return etkilenen
 
@@ -407,6 +443,7 @@ def normalize_db(db, create_admin=False):
         u.setdefault("ucd_aktif", True)
         u.setdefault("ref_kod", "REF-MERKEZ" if u.get("is_admin") else generate_ref_kod(db))
         u.setdefault("referans_eden", None)
+        u.setdefault("ref_odul_verildi", bool(u.get("dogrulandi", False)))
         u.setdefault("temsilci_kazanc", 0.0)
         u.setdefault("selfie", None)
         u.setdefault("krediler", [])
@@ -421,6 +458,7 @@ def normalize_db(db, create_admin=False):
         for k in u.get("krediler", []):
             k.setdefault("sonraki_taksit_ts", time.time() + (7 * 86400))
             k.setdefault("gecikme_sayisi", 0)
+            k.setdefault("ceza_muaf", False)
 
     if create_admin and "admin" not in db["users"]:
         env_pw = os.getenv("ADMIN_PASSWORD", "1234")
@@ -745,12 +783,43 @@ def pending_view(rid, t, db=None):
         out["user_ad"] = u["ad_soyad"] if u else t.get("user_id")
     return out
 
+def format_all_loans_for_admin(db):
+    """Sistemdeki tüm aktif kredileri tüm verileri ve gecikme durumlarıyla listeler."""
+    now_ts = time.time()
+    out = []
+    for email, u in db.get("users", {}).items():
+        for k in u.get("krediler", []):
+            sonraki_ts = float(k.get("sonraki_taksit_ts", now_ts + 7 * 86400))
+            kalan_sn = int(sonraki_ts - now_ts)
+            vadesi_gecti = kalan_sn < 0
+            out.append({
+                "email": email,
+                "ad_soyad": u.get("ad_soyad", email),
+                "kredi_notu": u.get("kredi_notu", 1000),
+                "kredi_id": k.get("kredi_id"),
+                "ana_para": round(float(k.get("ana_para", 0.0)), 2),
+                "toplam_borc": round(float(k.get("toplam_borc", 0.0)), 2),
+                "kalan_borc": round(float(k.get("kalan_borc", 0.0)), 2),
+                "toplam_hafta": int(k.get("toplam_hafta", 3)),
+                "kalan_hafta": int(k.get("kalan_hafta", 1)),
+                "haftalik_taksit": round(float(k.get("haftalik_taksit", 0.0)), 2),
+                "faiz_orani": k.get("faiz_orani", 0),
+                "baslangic_tarihi": k.get("tarih", "-"),
+                "sonraki_taksit_ts": sonraki_ts,
+                "sonraki_taksit_tarihi": ts_to_str(sonraki_ts),
+                "kalan_sn": kalan_sn,
+                "vadesi_gecti": vadesi_gecti,
+                "gecikme_sayisi": int(k.get("gecikme_sayisi", 0)),
+                "ceza_muaf": bool(k.get("ceza_muaf", False)),
+            })
+    out.sort(key=lambda x: (not x["vadesi_gecti"], x["sonraki_taksit_ts"]))
+    return out
+
 # ---------------------------------------------------------------------------
 # CSRF & GÜVENLİK
 # ---------------------------------------------------------------------------
 @app.before_request
 def csrf_protect():
-    # Harici ödeme API v1 uç noktaları dış sunuculardan çağrılacağı için CSRF'den muaftır
     if request.path.startswith("/api/v1/"):
         return
     if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.path.startswith("/api/"):
@@ -881,17 +950,26 @@ def api_user_data():
             s for s in db.get("slipler", {}).values()
             if s.get("isyeri_email") == email and s.get("durum") == "bekliyor"
         ]
+        krediler_detay = []
+        for k in user.get("krediler", []):
+            sonraki_ts = float(k.get("sonraki_taksit_ts", now_ts + 7 * 86400))
+            krediler_detay.append({
+                **k,
+                "sonraki_taksit_tarihi": ts_to_str(sonraki_ts),
+                "vadesi_gecti": now_ts > sonraki_ts,
+            })
         return jsonify(
             status="success",
             user=public_user(email, user, db),
             dekontlar=dekontlar,
-            krediler=user.get("krediler", []),
+            krediler=krediler_detay,
             satinalinan_epinler=user.get("satinalinan_epinler", []),
             market=market_listing(db),
             bekleyen=bekleyen,
             kart_onaylari=kart_onaylari,
             sliplerim=sliplerim,
             is_hesabi_talep_var=email in db.get("is_hesabi_talepleri", {}),
+            temsilci_talep_var=email in db.get("temsilci_talepleri", {}),
             dogrulama_beklemede=email in db.get("dogrulama_talepleri", {}),
             ayarlar=db["ayarlar"],
         )
@@ -902,7 +980,7 @@ def api_toggle_3d():
         email, user = require_user(db)
         yeni_durum = not bool(user.get("ucd_aktif", True))
         user["ucd_aktif"] = yeni_durum
-    durum_yazi = "AKTİF (10 Dk Onay Havuzu)" if yeni_durum else "KAPALI (Doğrudan Onaysız Çekim)"
+    durum_yazi = "AKTİF (Onay Havuzu)" if yeni_durum else "KAPALI (Doğrudan Onaysız Çekim)"
     return jsonify(status="success", message=f"Sanal Kart 3D Secure durumu güncellendi: {durum_yazi}", ucd_aktif=yeni_durum)
 
 @app.route("/api/card/decision-3d", methods=["POST"])
@@ -992,6 +1070,24 @@ def api_request_business():
             "tarih": datetime.now().strftime("%d/%m/%Y %H:%M"),
         }
     return jsonify(status="success", message="İş Hesabı talebiniz yönetici onayına gönderildi!")
+
+@app.route("/api/user/request-temsilci", methods=["POST"])
+def api_request_temsilci():
+    with transaction() as db:
+        email, user = require_user(db)
+        if user.get("is_temsilci"):
+            raise ApiError("Zaten Yetkili Temsilci statüsündesiniz.")
+        if not user.get("dogrulandi"):
+            raise ApiError("Temsilcilik başvurusu için önce 144p kimlik/yüz doğrulaması yapmalısınız.", 403)
+        if email in db.get("temsilci_talepleri", {}):
+            raise ApiError("Temsilcilik başvurunuz zaten inceleme aşamasındadır.")
+        db["temsilci_talepleri"][email] = {
+            "email": email,
+            "ad_soyad": user["ad_soyad"],
+            "ref_kod": user.get("ref_kod"),
+            "tarih": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        }
+    return jsonify(status="success", message="Yetkili Temsilcilik başvurunuz Merkez Bankası onayına gönderildi!")
 
 # ---------------------------------------------------------------------------
 # E-PIN MARKET & KUPON & HARİCİ KART SİSTEMİ
@@ -1526,6 +1622,8 @@ def api_admin_users():
             bekleyen_talepler=db.get("bekleyen_talepler", {}),
             dogrulama_talepleri=db.get("dogrulama_talepleri", {}),
             is_hesabi_talepleri=db.get("is_hesabi_talepleri", {}),
+            temsilci_talepleri=db.get("temsilci_talepleri", {}),
+            tum_krediler=format_all_loans_for_admin(db),
             epin_urunler=db.get("epin_urunler", {}),
             kuponlar=db.get("kuponlar", {}),
         )
@@ -1534,7 +1632,7 @@ def api_admin_users():
 def api_admin_create_coupon():
     data = body()
     kod = str(data.get("kod", "")).strip().upper()
-    tur = data.get("tur", "nakit")  # "nakit" veya "yuzde"
+    tur = data.get("tur", "nakit")
     deger = parse_amount(data.get("deger"), "indirim değeri")
     hedef_kullanici = str(data.get("hedef_kullanici", "genel")).strip().lower() or "genel"
     hedef_urun = str(data.get("hedef_urun", "tumu")).strip() or "tumu"
@@ -1573,12 +1671,60 @@ def api_admin_delete_coupon():
             del db["kuponlar"][kod]
     return jsonify(status="success", message="Kupon silindi.")
 
+@app.route("/api/admin/manage-loan", methods=["POST"])
+def api_admin_manage_loan():
+    data = body()
+    target = str(data.get("email", "")).strip()
+    kredi_id = str(data.get("kredi_id", "")).strip()
+    action = str(data.get("action", "")).strip()
+
+    with transaction() as db:
+        require_admin(db)
+        u = db["users"].get(target)
+        if not u:
+            raise ApiError("Kullanıcı bulunamadı.")
+        kredi = next((k for k in u.get("krediler", []) if k.get("kredi_id") == kredi_id), None)
+        if not kredi:
+            raise ApiError("Kredi kaydı bulunamadı.")
+
+        if action == "ek_zaman":
+            ek_gun = int(float(str(data.get("gun") or db["ayarlar"].get("kredi_ek_zaman_gun", 7))))
+            baz_ts = max(time.time(), float(kredi.get("sonraki_taksit_ts", time.time())))
+            kredi["sonraki_taksit_ts"] = baz_ts + (ek_gun * 86400)
+            return jsonify(status="success", message=f"{kredi_id} kredisinin taksit vadesine +{ek_gun} gün ek süre tanındı.")
+
+        elif action == "muaf_degistir":
+            yeni_muaf = not bool(kredi.get("ceza_muaf", False))
+            kredi["ceza_muaf"] = yeni_muaf
+            durum_str = "Cezadan Muaf Tutuldu" if yeni_muaf else "Otomatik Ceza Denetimine Dahil Edildi"
+            return jsonify(status="success", message=f"{kredi_id} kredisi güncellendi: {durum_str}.")
+
+        elif action == "manuel_ceza":
+            apply_single_loan_penalty(db, target, u, kredi)
+            return jsonify(status="success", message=f"{kredi_id} kredisine manuel gecikme cezası ve kredi notu düşümü uygulandı.")
+
+        elif action == "duzenle":
+            yeni_borc = parse_amount(data.get("kalan_borc"), "kalan borç")
+            yeni_taksit = parse_amount(data.get("haftalik_taksit"), "haftalık taksit")
+            yeni_hafta = max(1, int(float(str(data.get("kalan_hafta", kredi.get("kalan_hafta", 1))))))
+            kredi["kalan_borc"] = yeni_borc
+            kredi["haftalik_taksit"] = yeni_taksit
+            kredi["kalan_hafta"] = yeni_hafta
+            return jsonify(status="success", message=f"{kredi_id} kredi bilgileri güncellendi.")
+
+        elif action == "sil":
+            u["krediler"] = [k for k in u.get("krediler", []) if k.get("kredi_id") != kredi_id]
+            add_dekont(db, target, "KREDI_SILINDI", 0.0, f"Kredi ({kredi_id}) Merkez Bankası tarafından kapatıldı/silindi.")
+            return jsonify(status="success", message=f"{kredi_id} kredisi sistemden kaldırıldı.")
+
+    raise ApiError("Geçersiz kredi yönetim işlemi.")
+
 @app.route("/api/admin/trigger-overdue-loans", methods=["POST"])
 def api_admin_trigger_overdue_loans():
     with transaction() as db:
         require_admin(db)
-        etkilenen = process_overdue_loans(db, force_all=True)
-    return jsonify(status="success", message=f"Haftalık kredi gecikme denetimi çalıştırıldı. {etkilenen} aktif krediye ceza ve kredi notu düşümü uygulandı.")
+        etkilenen = process_overdue_loans(db, force_all=False)
+    return jsonify(status="success", message=f"Vade kontrolü tamamlandı. Vadesi geçen {etkilenen} krediye ceza uygulandı.")
 
 @app.route("/api/admin/delete-user", methods=["POST"])
 def api_admin_delete_user():
@@ -1593,6 +1739,7 @@ def api_admin_delete_user():
         del db["users"][target]
         db["dogrulama_talepleri"].pop(target, None)
         db["is_hesabi_talepleri"].pop(target, None)
+        db["temsilci_talepleri"].pop(target, None)
 
         for rid in [k for k, v in db.get("bekleyen_talepler", {}).items() if v.get("user_id") == target]:
             del db["bekleyen_talepler"][rid]
@@ -1612,7 +1759,8 @@ def api_admin_direct_verify():
             db["users"][target]["dogrulandi"] = True
             if target in db.get("dogrulama_talepleri", {}):
                 del db["dogrulama_talepleri"][target]
-    return jsonify(status="success", message=f"{target} hesabı doğrudan doğrulandı.")
+            grant_referral_verification_reward(db, target)
+    return jsonify(status="success", message=f"{target} hesabı doğrudan doğrulandı (Varsa referans ödülü aktarıldı).")
 
 @app.route("/api/admin/seize-balance", methods=["POST"])
 def api_admin_seize_balance():
@@ -1648,11 +1796,25 @@ def api_admin_approve_business():
             del db["is_hesabi_talepleri"][target]
     return jsonify(status="success", message="İş Hesabı talebi güncellendi.")
 
+@app.route("/api/admin/approve-temsilci", methods=["POST"])
+def api_admin_approve_temsilci():
+    data = body()
+    target, action = data.get("email"), data.get("action")
+    with transaction() as db:
+        require_admin(db)
+        if target in db["users"] and action == "onay":
+            db["users"][target]["is_temsilci"] = True
+        if target in db.get("temsilci_talepleri", {}):
+            del db["temsilci_talepleri"][target]
+    return jsonify(status="success", message="Temsilcilik başvurusu sonuçlandırıldı.")
+
 @app.route("/api/admin/edit-user", methods=["POST"])
 def api_admin_edit_user():
     data = body()
     target, action = data.get("email"), data.get("action")
-    amount = parse_amount(data.get("amount"), required=False) or 0.0
+    amount = 0.0
+    if action in ("bakiye_ekle", "bakiye_kes"):
+        amount = parse_amount(data.get("amount"), "tutar", required=True)
 
     with transaction() as db:
         require_admin(db)
@@ -1676,6 +1838,8 @@ def api_admin_edit_user():
             u["is_hesabi"] = False
         elif action == "temsilci_degistir":
             u["is_temsilci"] = not bool(u.get("is_temsilci", False))
+            if u["is_temsilci"] and target in db.get("temsilci_talepleri", {}):
+                del db["temsilci_talepleri"][target]
 
     return jsonify(status="success", message=f"{target} kullanıcısı güncellendi.")
 
@@ -1688,9 +1852,12 @@ def api_admin_update_settings():
             "komisyon_odeme", "komisyon_cekme", "komisyon_havale", "havale_sinir",
             "kisitli_gunluk_havale", "kredi_faiz", "gecikme_cezasi",
             "kredi_gecikme_ceza_orani", "komisyon_epin_satis", "komisyon_slip",
-            "temsilci_kar_payi_orani"
+            "temsilci_kar_payi_orani", "referans_dogrulama_odulu"
         )
-        int_keys = ("gecikme_kredi_notu_ceza", "ucd_onay_suresi_dk", "canli_yenileme_sn")
+        int_keys = (
+            "gecikme_kredi_notu_ceza", "kredi_ek_zaman_gun",
+            "ucd_onay_suresi_dk", "canli_yenileme_sn"
+        )
 
         for k in float_keys:
             if k in data and data[k] not in (None, ""):
@@ -1699,7 +1866,7 @@ def api_admin_update_settings():
             if k in data and data[k] not in (None, ""):
                 db["ayarlar"][k] = max(1, int(float(str(data[k]).replace(",", "."))))
 
-    return jsonify(status="success", message="Tüm Merkez Bankası parametreleri ve süreler güncellendi.")
+    return jsonify(status="success", message="Tüm Merkez Bankası parametreleri, ödüller ve süreler güncellendi.")
 
 @app.route("/api/admin/approve-request", methods=["POST"])
 def api_admin_approve_request():
@@ -1731,6 +1898,7 @@ def api_admin_approve_request():
                     "tarih": datetime.now().strftime("%d/%m/%Y %H:%M"),
                     "sonraki_taksit_ts": time.time() + (7 * 86400),
                     "gecikme_sayisi": 0,
+                    "ceza_muaf": False,
                 }
                 user["bakiye"] = round(user["bakiye"] + talep["tutar"], 2)
                 user["krediler"].append(kredi_obj)
@@ -1756,6 +1924,7 @@ def api_admin_verify_user():
         require_admin(db)
         if target in db["users"] and action == "onay":
             db["users"][target]["dogrulandi"] = True
+            grant_referral_verification_reward(db, target)
         if target in db.get("dogrulama_talepleri", {}):
             del db["dogrulama_talepleri"][target]
     return jsonify(status="success", message="Doğrulama durumu güncellendi.")
